@@ -1,0 +1,66 @@
+name: archive_manager
+description: "د آرشیف چټک مدیر — Archive Quick Manager"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # --- State management ---
+  provider: ^6.1.5+1
+
+  # --- Index / database (native only, guarded by conditional imports) ---
+  sqlite3: ^3.5.2
+
+  # --- Calendars ---
+  shamsi_date: ^1.1.1
+  hijri: ^3.0.1
+
+  # --- Files & paths ---
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  file_picker: ^12.2.0
+  desktop_drop: ^0.8.4
+  cross_file: ^0.3.4+2
+  url_launcher: ^6.3.0
+  mime: ^1.0.6
+
+  # --- UI ---
+  fl_chart: ^1.2.0
+  window_manager: ^0.5.2
+
+  # --- Utils ---
+  collection: ^1.18.0
+  crypto: ^3.0.5
+  intl: ^0.20.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/fonts/
+  fonts:
+    - family: Vazirmatn
+      fonts:
+        - asset: assets/fonts/Vazirmatn-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Vazirmatn-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Vazirmatn-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Vazirmatn-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Vazirmatn-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Vazirmatn-Black.ttf
+          weight: 900
