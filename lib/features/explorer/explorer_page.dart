@@ -368,14 +368,16 @@ class _ExplorerPageState extends State<ExplorerPage> {
             _pathBar(context),
             Divider(height: 1, color: cs.outlineVariant),
             Expanded(
+              // په RTL کې لومړی اولاد ښي لور ته ځي — د وينډوز اکسپلورر
+              // په څېر، د فولډرونو ونه ښي طرف ته.
               child: Row(
                 children: [
-                  Expanded(child: _content(context)),
                   if (_showTree)
                     ExplorerTree(
                       current: _path,
                       onOpen: _open,
                     ),
+                  Expanded(child: _content(context)),
                 ],
               ),
             ),

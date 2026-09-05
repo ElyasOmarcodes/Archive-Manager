@@ -27,7 +27,7 @@ void main() {
       for (var i = 0; i < 120; i++)
         EventMetadata(
           id: 'e$i',
-          title: 'پیښه ${i}: د ${cats[i % 4]} ${kws[i % 6]} راپور',
+          title: 'پیښه $i: د ${cats[i % 4]} ${kws[i % 6]} راپور',
           summary: 'د دې پیښې لنډ وضاحت — ${kws[(i * 5) % 6]}',
           folderPath: 'E:/Arvitch/e$i',
           date: TriDate.fromJdn(TriDate.fromShamsi(1400, 1, 1).jdn + i * 11),

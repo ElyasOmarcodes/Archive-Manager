@@ -197,13 +197,13 @@ class _EventEditorPageState extends State<EventEditorPage> {
           },
         ),
         Expanded(
+          // په RTL کې د Row لومړی اولاد **ښي** لور ته ځي.
+          // نو د ویجټونو پالېټ لومړی (ښي) او د میټاډیټا پینل وروستی
+          // (چپ) — لکه څنګه چې غوښتل شوی و.
           child: Row(
             children: [
-              // ── چپ پینل: میټاډیټا ──
-              MetaPanel(
-                event: _event,
-                onChanged: (f) => _mutate(f),
-              ),
+              // ── ښي: د ویجټونو پالېټ ──
+              _Palette(onAdd: _addBlock),
 
               // ── منځ: د پاڼې جوړونه ──
               Expanded(
@@ -238,8 +238,11 @@ class _EventEditorPageState extends State<EventEditorPage> {
                 ),
               ),
 
-              // ── ښي: د ویجټونو پالېټ ──
-              _Palette(onAdd: _addBlock),
+              // ── چپ: د میټاډیټا پینل ──
+              MetaPanel(
+                event: _event,
+                onChanged: (f) => _mutate(f),
+              ),
             ],
           ),
         ),
@@ -559,7 +562,7 @@ class _Palette extends StatelessWidget {
       width: 190,
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        border: Border(right: BorderSide(color: cs.outlineVariant)),
+        border: Border(left: BorderSide(color: cs.outlineVariant)),
       ),
       child: ListView(
         padding: const EdgeInsets.all(AppTokens.s12),

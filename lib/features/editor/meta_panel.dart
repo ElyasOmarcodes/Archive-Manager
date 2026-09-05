@@ -73,7 +73,7 @@ class _MetaPanelState extends State<MetaPanel> {
       width: 292,
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        border: Border(left: BorderSide(color: cs.outlineVariant)),
+        border: Border(right: BorderSide(color: cs.outlineVariant)),
       ),
       child: Column(
         children: [

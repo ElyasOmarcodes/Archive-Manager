@@ -456,12 +456,18 @@ class SelectChip extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                 ],
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    color: selected ? accent : cs.onSurface,
+                // اوږد کیورډ یا کټګوري باید چیپ ونه شلوي — کله چې چیپ
+                // په تنګ پینل کې وي، متن یې لنډیږي نه چې بهر ووځي.
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                      color: selected ? accent : cs.onSurface,
+                    ),
                   ),
                 ),
                 if (count != null) ...[

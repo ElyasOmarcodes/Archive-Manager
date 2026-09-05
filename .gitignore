@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Node (یوازې د سکرین‌شاټ د اخیستلو لپاره — د پروژې برخه نه ده)
+node_modules/
+package.json
+package-lock.json

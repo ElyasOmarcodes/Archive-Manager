@@ -386,7 +386,8 @@ class _WeeklyChart extends StatelessWidget {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 34,
+                      // دوه کرښې (د اونۍ ورځ + د میاشتې ورځ) ځای غواړي
+                      reservedSize: 44,
                       getTitlesWidget: (v, _) {
                         final i = v.toInt();
                         if (i < 0 || i > 6) return const SizedBox.shrink();
@@ -394,6 +395,7 @@ class _WeeklyChart extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 PashtoMonths.weekDaysShort[d.shamsiWeekDay],

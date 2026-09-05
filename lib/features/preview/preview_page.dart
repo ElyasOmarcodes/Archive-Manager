@@ -46,16 +46,18 @@ class PreviewPage extends StatelessWidget {
               const SizedBox(width: AppTokens.s8),
               Icon(Icons.visibility_rounded, size: 17, color: cs.primary),
               const SizedBox(width: 6),
-              const Text('پریویو',
-                  style:
-                      TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+              const Text(
+                'پریویو',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
               const Spacer(),
               // ── د دوه‌ګوني پرانیستلو تڼۍ ──
               _OpenWithButton(folder: event.folderPath),
               const SizedBox(width: AppTokens.s8),
               OutlinedButton.icon(
-                onPressed: () => s.backend
-                    .openExternally(p.join(event.folderPath, 'index.html')),
+                onPressed: () => s.backend.openExternally(
+                  p.join(event.folderPath, 'index.html'),
+                ),
                 icon: const Icon(Icons.open_in_browser_rounded, size: 17),
                 label: const Text('په براوزر کې'),
               ),
@@ -74,15 +76,16 @@ class PreviewPage extends StatelessWidget {
                     constraints: const BoxConstraints(maxWidth: 860),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppTokens.s24, vertical: AppTokens.s32),
+                        horizontal: AppTokens.s24,
+                        vertical: AppTokens.s32,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _Hero(event: event),
                           const SizedBox(height: AppTokens.s32),
                           for (final b in event.blocks)
-                            _BlockView(
-                                block: b, folder: event.folderPath),
+                            _BlockView(block: b, folder: event.folderPath),
                           const SizedBox(height: AppTokens.s40),
                           _Footer(event: event),
                         ],
@@ -124,8 +127,10 @@ class _OpenWithButton extends StatelessWidget {
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.horizontal(
-                      right: Radius.circular(AppTokens.rMd))),
+                borderRadius: BorderRadius.horizontal(
+                  right: Radius.circular(AppTokens.rMd),
+                ),
+              ),
             ),
           ),
           Container(width: 1, height: 22, color: cs.outlineVariant),
@@ -136,8 +141,10 @@ class _OpenWithButton extends StatelessWidget {
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.horizontal(
-                      left: Radius.circular(AppTokens.rMd))),
+                borderRadius: BorderRadius.horizontal(
+                  left: Radius.circular(AppTokens.rMd),
+                ),
+              ),
             ),
           ),
         ],
@@ -166,16 +173,21 @@ class _Hero extends StatelessWidget {
                 if (event.category.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 5),
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: cs.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Text(event.category,
-                        style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: cs.primary)),
+                    child: Text(
+                      event.category,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary,
+                      ),
+                    ),
                   ),
                 if (event.rating > 0) ...[
                   const SizedBox(width: AppTokens.s12),
@@ -185,9 +197,9 @@ class _Hero extends StatelessWidget {
             ),
           ),
         ShaderMask(
-          shaderCallback: (r) => LinearGradient(
-            colors: [cs.onSurface, cs.primary],
-          ).createShader(r),
+          shaderCallback: (r) =>
+              LinearGradient(colors: [cs.onSurface, cs.primary])
+                  .createShader(r),
           child: Text(
             event.title,
             textAlign: TextAlign.center,
@@ -196,10 +208,11 @@ class _Hero extends StatelessWidget {
         ),
         if (event.summary.isNotEmpty) ...[
           const SizedBox(height: AppTokens.s12),
-          Text(event.summary,
-              textAlign: TextAlign.center,
-              style: t.textTheme.bodyLarge
-                  ?.copyWith(color: cs.onSurfaceVariant)),
+          Text(
+            event.summary,
+            textAlign: TextAlign.center,
+            style: t.textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
+          ),
         ],
         const SizedBox(height: AppTokens.s24),
         // درې واړه تقویمونه
@@ -215,7 +228,9 @@ class _Hero extends StatelessWidget {
             ])
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: AppTokens.s12, vertical: AppTokens.s8),
+                  horizontal: AppTokens.s12,
+                  vertical: AppTokens.s8,
+                ),
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerLowest,
                   borderRadius: AppTokens.brMd,
@@ -224,14 +239,21 @@ class _Hero extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(d.$1,
-                        style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600,
-                            color: cs.onSurfaceVariant)),
-                    Text(d.$2,
-                        style: const TextStyle(
-                            fontSize: 12.5, fontWeight: FontWeight.w700)),
+                    Text(
+                      d.$1,
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      d.$2,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -246,8 +268,10 @@ class _Hero extends StatelessWidget {
             children: [
               for (final p in event.persons)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: cs.primary.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(999),
@@ -257,24 +281,28 @@ class _Hero extends StatelessWidget {
                     children: [
                       Icon(Icons.person_rounded, size: 11, color: cs.primary),
                       const SizedBox(width: 4),
-                      Text(p,
-                          style: TextStyle(
-                              fontSize: 11, color: cs.primary)),
+                      Text(
+                        p,
+                        style: TextStyle(fontSize: 11, color: cs.primary),
+                      ),
                     ],
                   ),
                 ),
               for (final k in event.keywords)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainer,
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: cs.outlineVariant),
                   ),
-                  child: Text('#$k',
-                      style: TextStyle(
-                          fontSize: 11, color: cs.onSurfaceVariant)),
+                  child: Text(
+                    '#$k',
+                    style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                  ),
                 ),
             ],
           ),
@@ -283,11 +311,13 @@ class _Hero extends StatelessWidget {
         Container(
           height: 1,
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              Colors.transparent,
-              cs.outlineVariant,
-              Colors.transparent,
-            ]),
+            gradient: LinearGradient(
+              colors: [
+                Colors.transparent,
+                cs.outlineVariant,
+                Colors.transparent,
+              ],
+            ),
           ),
         ),
       ],
@@ -309,7 +339,10 @@ class _BlockView extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppTokens.s24),
       child: switch (block.kind) {
         BlockKind.heading => Align(
-            alignment: AlignmentDirectional.centerStart,
+          alignment: AlignmentDirectional.centerStart,
+          // `stretch` د قدې محدودیت غواړي؛ دلته قد له متن څخه راځي،
+          // نو IntrinsicHeight یې لومړی اندازه کوي.
+          child: IntrinsicHeight(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -344,69 +377,79 @@ class _BlockView extends StatelessWidget {
               ],
             ),
           ),
+        ),
         BlockKind.paragraph => Text(
-            block.text,
-            textAlign: TextAlign.right,
-            style: t.textTheme.bodyLarge?.copyWith(height: 1.9),
-          ),
+          block.text,
+          textAlign: TextAlign.right,
+          style: t.textTheme.bodyLarge?.copyWith(height: 1.9),
+        ),
         BlockKind.quote => Container(
-            padding: const EdgeInsets.all(AppTokens.s24),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerLowest,
-              borderRadius: AppTokens.brLg,
-              border: Border.all(color: cs.outlineVariant),
-              boxShadow: [
-                BoxShadow(
-                    color: cs.shadow.withValues(alpha: 0.05),
-                    blurRadius: 18,
-                    offset: const Offset(0, 4)),
-              ],
-            ),
-            child: Stack(
-              children: [
-                PositionedDirectional(
-                  top: -14,
-                  end: 4,
-                  child: Text('”',
-                      style: TextStyle(
-                          fontSize: 60,
-                          fontWeight: FontWeight.w800,
-                          height: 1,
-                          color: cs.primary.withValues(alpha: 0.17))),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(block.text,
-                        style: t.textTheme.titleMedium
-                            ?.copyWith(height: 1.9, fontSize: 16)),
-                    if (block.author.isNotEmpty) ...[
-                      const SizedBox(height: AppTokens.s12),
-                      Text('— ${block.author}',
-                          style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: cs.onSurfaceVariant)),
-                    ],
-                  ],
-                ),
-              ],
-            ),
+          padding: const EdgeInsets.all(AppTokens.s24),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLowest,
+            borderRadius: AppTokens.brLg,
+            border: Border.all(color: cs.outlineVariant),
+            boxShadow: [
+              BoxShadow(
+                color: cs.shadow.withValues(alpha: 0.05),
+                blurRadius: 18,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
+          child: Stack(
+            children: [
+              PositionedDirectional(
+                top: -14,
+                end: 4,
+                child: Text(
+                  '”',
+                  style: TextStyle(
+                    fontSize: 60,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                    color: cs.primary.withValues(alpha: 0.17),
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    block.text,
+                    style: t.textTheme.titleMedium?.copyWith(
+                      height: 1.9,
+                      fontSize: 16,
+                    ),
+                  ),
+                  if (block.author.isNotEmpty) ...[
+                    const SizedBox(height: AppTokens.s12),
+                    Text(
+                      '— ${block.author}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
         BlockKind.divider => Center(
-            child: Container(
-              width: 160,
-              height: 1.5,
-              margin: const EdgeInsets.symmetric(vertical: AppTokens.s16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  Colors.transparent,
-                  cs.outline,
-                  Colors.transparent,
-                ]),
+          child: Container(
+            width: 160,
+            height: 1.5,
+            margin: const EdgeInsets.symmetric(vertical: AppTokens.s16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.transparent, cs.outline, Colors.transparent],
               ),
             ),
           ),
+        ),
         _ => _MediaView(block: block, folder: folder),
       },
     );
@@ -432,8 +475,10 @@ class _MediaView extends StatelessWidget {
           border: Border.all(color: cs.outlineVariant, width: 1.4),
         ),
         child: Center(
-          child: Text('${block.kind.label} نه دی ټاکل شوی',
-              style: TextStyle(fontSize: 12.5, color: cs.onSurfaceVariant)),
+          child: Text(
+            '${block.kind.label} نه دی ټاکل شوی',
+            style: TextStyle(fontSize: 12.5, color: cs.onSurfaceVariant),
+          ),
         ),
       );
     }
@@ -443,9 +488,7 @@ class _MediaView extends StatelessWidget {
     final kind = MediaKind.ofPath(name);
 
     // انځور — وهل یې فول‌سکرین کوي.
-    if (block.kind == BlockKind.image &&
-        !kIsWeb &&
-        File(full).existsSync()) {
+    if (block.kind == BlockKind.image && !kIsWeb && File(full).existsSync()) {
       return Column(
         children: [
           GestureDetector(
@@ -454,8 +497,11 @@ class _MediaView extends StatelessWidget {
               cursor: SystemMouseCursors.click,
               child: ClipRRect(
                 borderRadius: AppTokens.brLg,
-                child: Image.file(File(full),
-                    fit: BoxFit.contain, errorBuilder: (_, _, _) => _card(context, kind, name)),
+                child: Image.file(
+                  File(full),
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => _card(context, kind, name),
+                ),
               ),
             ),
           ),
@@ -473,26 +519,35 @@ class _MediaView extends StatelessWidget {
   }
 
   Widget _caption(BuildContext context, String text) => Padding(
-        padding: const EdgeInsets.only(top: AppTokens.s8),
-        child: Text(text,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall),
-      );
+    padding: const EdgeInsets.only(top: AppTokens.s8),
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
+  );
 
-  Widget _card(BuildContext context, MediaKind kind, String name,
-      {VoidCallback? onTap}) {
+  Widget _card(
+    BuildContext context,
+    MediaKind kind,
+    String name, {
+    VoidCallback? onTap,
+  }) {
     final cs = Theme.of(context).colorScheme;
     return HoverLift(
       onTap: onTap,
       builder: (context, hovered) => AnimatedContainer(
         duration: AppTokens.base,
         padding: const EdgeInsets.symmetric(
-            horizontal: AppTokens.s20, vertical: AppTokens.s24),
+          horizontal: AppTokens.s20,
+          vertical: AppTokens.s24,
+        ),
         decoration: BoxDecoration(
           color: cs.surfaceContainerLowest,
           borderRadius: AppTokens.brLg,
           border: Border.all(
-              color: hovered ? mediaColor(kind) : cs.outlineVariant),
+            color: hovered ? mediaColor(kind) : cs.outlineVariant,
+          ),
         ),
         child: Row(
           children: [
@@ -511,24 +566,30 @@ class _MediaView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(name,
-                      style: const TextStyle(
-                          fontSize: 13.5, fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis,
-                      textDirection: TextDirection.ltr),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textDirection: TextDirection.ltr,
+                  ),
                   Text(
                     onTap == null
                         ? kind.label
                         : 'د پرانیستلو لپاره یې ووهئ — ${kind.label}',
-                    style: TextStyle(
-                        fontSize: 11, color: cs.onSurfaceVariant),
+                    style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
             ),
             if (onTap != null)
-              Icon(Icons.open_in_new_rounded,
-                  size: 17, color: mediaColor(kind)),
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 17,
+                color: mediaColor(kind),
+              ),
           ],
         ),
       ),
@@ -554,11 +615,15 @@ class _MediaView extends StatelessWidget {
             top: 20,
             right: 24,
             child: IconButton(
-              icon: const Icon(Icons.close_rounded,
-                  color: Colors.white, size: 26),
+              icon: const Icon(
+                Icons.close_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
               onPressed: () => Navigator.pop(ctx),
               style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.14)),
+                backgroundColor: Colors.white.withValues(alpha: 0.14),
+              ),
             ),
           ),
           if (caption.isNotEmpty)
@@ -566,10 +631,11 @@ class _MediaView extends StatelessWidget {
               bottom: 28,
               left: 0,
               right: 0,
-              child: Text(caption,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 13)),
+              child: Text(
+                caption,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
             ),
         ],
       ),
@@ -592,16 +658,21 @@ class _Footer extends StatelessWidget {
           spacing: AppTokens.s12,
           alignment: WrapAlignment.center,
           children: [
-            Text(event.title,
-                style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant)),
+            Text(
+              event.title,
+              style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant),
+            ),
             Text('·', style: TextStyle(color: cs.outline)),
-            Text(event.date.shamsiText,
-                style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant)),
+            Text(
+              event.date.shamsiText,
+              style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant),
+            ),
             if (event.attachments.isNotEmpty) ...[
               Text('·', style: TextStyle(color: cs.outline)),
-              Text('${event.attachments.length} فایلونه',
-                  style:
-                      TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant)),
+              Text(
+                '${event.attachments.length} فایلونه',
+                style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant),
+              ),
             ],
           ],
         ),
