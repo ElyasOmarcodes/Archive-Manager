@@ -229,7 +229,7 @@ class _Grid extends StatelessWidget {
               SizedBox(
                 width: w,
                 child: FadeSlideIn(
-                  delay: Duration(milliseconds: (28 * i).clamp(0, 400)),
+                  delay: AppTokens.staggerFor(i),
                   child: EventCard(event: s.events[i]),
                 ),
               ),

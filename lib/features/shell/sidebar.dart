@@ -79,10 +79,13 @@ class _AppSidebarState extends State<AppSidebar>
         return Container(
           width: width,
           decoration: BoxDecoration(
-            // په تیاره تیم کې سایډبار یو څه توره ده تر محتوا — نو د
-            // پینل په څېر ښکاري، نه چې د پاڼې سره ګډه شي.
-            color: dark ? cs.surfaceContainerLow : cs.surfaceContainerLowest,
-            border: Border(right: BorderSide(color: cs.outlineVariant)),
+            // **سایډبار باید له پاڼې څخه بېل ښکاري.**
+            // پخوا په سپین تیم کې دواړه نږدې سپین وو، نو سرحد یې نه
+            // معلومېده. اوس سایډبار یوه پوړۍ توره ده تر پاڼې —
+            // لږ، خو بس چې پوله یې واضح شي.
+            color: dark ? cs.surfaceContainerLow : cs.surfaceContainer,
+            border: Border(
+                right: BorderSide(color: cs.outline.withValues(alpha: 0.45))),
             boxShadow: [
               if (dark)
                 BoxShadow(
@@ -198,7 +201,8 @@ class _Brand extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(
           AppTokens.s12, AppTokens.s16, AppTokens.s12, AppTokens.s16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: cs.outlineVariant)),
+        border: Border(
+            bottom: BorderSide(color: cs.outline.withValues(alpha: 0.28))),
       ),
       child: Row(
         children: [
@@ -377,10 +381,13 @@ class _NavItemState extends State<_NavItem> {
 
   @override
   Widget build(BuildContext context) {
-    final s = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final active = s.page == widget.page && s.editing == null;
+    // `watch` به د AppState د هر بدلون سره دا توکی بیا جوړ کړ —
+    // آن کله چې یوازې د لټون پایلې بدلې شوې وي. `select` یوازې د
+    // فعال حالت پر بدلون بیا جوړوي.
+    final active = context.select<AppState, bool>(
+        (s) => s.page == widget.page && s.editing == null);
     final t = widget.t;
     final ink = AppTokens.tileInk[widget.page.tone]!;
 
@@ -393,7 +400,7 @@ class _NavItemState extends State<_NavItem> {
           onEnter: (_) => setState(() => _hover = true),
           onExit: (_) => setState(() => _hover = false),
           child: GestureDetector(
-            onTap: () => s.go(widget.page),
+            onTap: () => context.read<AppState>().go(widget.page),
             behavior: HitTestBehavior.opaque,
             child: AnimatedContainer(
               duration: AppTokens.base,
@@ -401,14 +408,17 @@ class _NavItemState extends State<_NavItem> {
               padding: const EdgeInsets.symmetric(
                   horizontal: AppTokens.s6, vertical: 6),
               decoration: BoxDecoration(
+                // سایډبار اوس یو څه تور دی، نو فعال توکی روښانه کیږي
+                // (نه تور) — پر سپین تیم کې دا ښه توپیر جوړوي.
                 color: active
                     ? (dark
                         ? ink.withValues(alpha: 0.16)
-                        : cs.surfaceContainerHigh)
+                        : cs.surfaceContainerLowest)
                     : _hover
                         ? (dark
                             ? Colors.white.withValues(alpha: 0.045)
-                            : cs.surfaceContainer.withValues(alpha: 0.7))
+                            : cs.surfaceContainerLowest
+                                .withValues(alpha: 0.62))
                         : null,
                 borderRadius: BorderRadius.circular(13),
                 border: Border.all(
@@ -499,7 +509,7 @@ class _IconTile extends StatelessWidget {
         ? Color.lerp(cs.surfaceContainerHigh, ink,
             active ? 0.30 : (hovered ? 0.22 : 0.16))!
         : active
-            ? Color.lerp(AppTokens.tileBgLight[tone]!, ink, 0.10)!
+            ? Color.lerp(AppTokens.tileBgLight[tone]!, ink, 0.12)!
             : AppTokens.tileBgLight[tone]!;
 
     final fg = dark ? Color.lerp(ink, Colors.white, 0.24)! : ink;
@@ -547,10 +557,10 @@ class _CountBadge extends StatelessWidget {
         color: active
             ? (dark
                 ? Colors.white.withValues(alpha: 0.10)
-                : cs.surfaceContainerHighest)
+                : cs.surfaceContainerHigh)
             : (dark
                 ? Colors.white.withValues(alpha: 0.055)
-                : cs.surfaceContainer),
+                : cs.surfaceContainerHigh.withValues(alpha: 0.7)),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Text(
@@ -651,7 +661,8 @@ class _DriveFooter extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: cs.outlineVariant)),
+        border: Border(
+            top: BorderSide(color: cs.outline.withValues(alpha: 0.28))),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

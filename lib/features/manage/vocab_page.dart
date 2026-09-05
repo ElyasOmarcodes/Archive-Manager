@@ -307,8 +307,7 @@ class _VocabPageState extends State<VocabPage> {
                       padding: const EdgeInsets.all(AppTokens.s24),
                       itemCount: items.length,
                       itemBuilder: (context, i) => FadeSlideIn(
-                        delay:
-                            Duration(milliseconds: (22 * i).clamp(0, 350)),
+                        delay: AppTokens.staggerFor(i),
                         child: _TermRow(
                           term: items[i],
                           prefix: _prefix,

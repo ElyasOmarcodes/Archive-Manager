@@ -17,10 +17,32 @@ class AppTokens {
   static BorderRadius brXl = BorderRadius.circular(rXl);
 
   // ── د حرکت وختونه ──────────────────────────────────────
-  static const Duration fast = Duration(milliseconds: 160);
-  static const Duration base = Duration(milliseconds: 260);
-  static const Duration slow = Duration(milliseconds: 420);
-  static const Duration slower = Duration(milliseconds: 650);
+  //
+  // **مهم اصل:** انیمیشن باید حرکت وښیي، نه چې کاروونکی وځنډوي.
+  // د ۱۰۰–۲۰۰ms ترمنځ حرکت «نرم» احساسیږي؛ تر ۳۰۰ms پورته یې
+  // کاروونکی د ځنډ په توګه ویني. مخکې مو `base` ۲۶۰ms و او د
+  // لیستونو د توکو پرله‌پسې ځنډ یې تر ۴۰۰ms رساوه — نو یوه پاڼه
+  // نږدې یوه ثانیه اخیسته. اوس هر څه نیم شوي دي.
+  static const Duration fast = Duration(milliseconds: 110);
+  static const Duration base = Duration(milliseconds: 170);
+  static const Duration slow = Duration(milliseconds: 240);
+  static const Duration slower = Duration(milliseconds: 420);
+
+  /// د یوه لیست د توکو ترمنځ پرله‌پسې ځنډ.
+  ///
+  /// **صفر نه دی** — لږ ځنډ حرکت ته ژوند ورکوي. خو ټول لیست باید
+  /// تر `staggerCap` پورې بشپړ شي، هرڅومره توکي چې ولري.
+  static const Duration stagger = Duration(milliseconds: 14);
+  static const Duration staggerCap = Duration(milliseconds: 120);
+
+  /// د `i` شمېرې توکي لپاره ځنډ — تل تر `staggerCap` لاندې.
+  static Duration staggerFor(int i) {
+    final ms = stagger.inMilliseconds * i;
+    return Duration(
+        milliseconds: ms > staggerCap.inMilliseconds
+            ? staggerCap.inMilliseconds
+            : ms);
+  }
 
   // نرم، طبیعي منحني — د ټول پروګرام لپاره یو شان
   static const Curve ease = Curves.easeOutCubic;

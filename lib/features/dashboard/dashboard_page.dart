@@ -412,7 +412,7 @@ class _StatCards extends StatelessWidget {
                 // یو یې اضافي کرښه ولري.
                 height: cardH,
                 child: FadeSlideIn(
-                  delay: Duration(milliseconds: 60 * i),
+                  delay: AppTokens.staggerFor(i),
                   child: _GradientCard(
                     label: items[i].$1,
                     value: items[i].$2,
@@ -591,7 +591,7 @@ class _MediaBreakdown extends StatelessWidget {
             for (var i = 0; i < entries.length; i++) ...[
               if (i > 0) const SizedBox(height: AppTokens.s16),
               FadeSlideIn(
-                delay: Duration(milliseconds: 70 * i),
+                delay: AppTokens.staggerFor(i),
                 child: InkWell(
                   onTap: () {
                     s.go(AppPage.events);
@@ -939,7 +939,7 @@ class _RecentEvents extends StatelessWidget {
                     SizedBox(
                       width: w,
                       child: FadeSlideIn(
-                        delay: Duration(milliseconds: 55 * i),
+                        delay: AppTokens.staggerFor(i),
                         child: EventCard(event: events[i], compact: true),
                       ),
                     ),
