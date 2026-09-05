@@ -99,6 +99,30 @@ void main() {
     expect('<script>'.allMatches(html).length, 1);
   });
 
+  test('font-face rules are emitted only when a font dir is given', () {
+    final e = EventMetadata(
+      id: 'f1', title: 'ازموینه', folderPath: '', date: TriDate.now(),
+      blocks: [Block(id: '1', kind: BlockKind.paragraph, text: 'متن')],
+    );
+
+    // پرته له فونټ فولډر — د سیسټم فونټ ته ورګرځي
+    final plain = buildEventHtml(e);
+    expect(plain.contains('@font-face'), isFalse);
+    expect(plain, contains('font-family:Vazirmatn,"Segoe UI"'));
+
+    // د فونټ فولډر سره — څلور وزنه تړل کیږي
+    final withFont = buildEventHtml(e, fontDir: '../../../../_arvitch/fonts');
+    expect('@font-face'.allMatches(withFont).length, 4);
+    for (final w in ['Regular', 'SemiBold', 'Bold', 'ExtraBold']) {
+      expect(withFont,
+          contains('url("../../../../_arvitch/fonts/Vazirmatn-$w.woff2")'));
+    }
+    // نسبي مسیر — نو د آرشیف لېږدول پاڼه نه ماتوي
+    expect(withFont.contains('file://'), isFalse);
+    expect(withFont.contains('C:'), isFalse);
+    expect(withFont, contains('font-display:swap'));
+  });
+
   test('missing sources degrade gracefully', () {
     final e = EventMetadata(
       id: 'x3', title: 't', folderPath: '', date: TriDate.now(),

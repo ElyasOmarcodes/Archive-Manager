@@ -125,7 +125,10 @@ class _EventEditorPageState extends State<EventEditorPage> {
   Future<void> _save({bool thenPreview = false}) async {
     setState(() => _saving = true);
     final s = context.read<AppState>();
-    final html = buildEventHtml(_event);
+    // فونټ فولډر یو ځل جوړیږي؛ پاڼه یې د نسبي مسیر له لارې راولي،
+    // نو آن که ټول آرشیف بل ډرایو ته ولېږدول شي، پاڼه سمه پاتې کیږي.
+    final fontDir = await s.backend.webFontDirFor(_event.folderPath);
+    final html = buildEventHtml(_event, fontDir: fontDir);
     await s.saveEvent(_event, html: html);
     if (!mounted) return;
     setState(() {

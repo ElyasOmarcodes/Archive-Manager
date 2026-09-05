@@ -5,6 +5,7 @@ import 'dart:isolate';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -32,6 +33,12 @@ class IoBackend implements ArchiveBackend {
   static const metaFile = 'metadata.json';
   static const htmlFile = 'index.html';
   static const attachmentsDir = 'attachments';
+
+  /// د پروګرام خپل فولډر د آرشیف ریښې دننه — فونټونه او راتلونکي
+  /// ګډ فایلونه پکې ساتل کیږي. سکن یې پرېږدي.
+  static const supportDir = '_arvitch';
+
+  static const _fontWeights = ['Regular', 'SemiBold', 'Bold', 'ExtraBold'];
 
   // ═══════════════════════════════════════════════════════
   //  تنظیمات
@@ -167,6 +174,49 @@ class IoBackend implements ArchiveBackend {
   // ═══════════════════════════════════════════════════════
   //  لیکل
   // ═══════════════════════════════════════════════════════
+
+  /// د آرشیف ریښې کې فونټونه یو ځل جوړوي او بېرته یې مسیر راګرځوي.
+  ///
+  /// دا کار یوازې لومړی ځل ریښتینی لیکل کوي؛ وروسته یوازې ګوري چې
+  /// فایلونه شته دي.
+  /// عامه بڼه — AppState یې مخکې له HTML جوړولو غوښتنه کوي.
+  @override
+  Future<String?> webFontDirFor(String eventFolder) async {
+    final root = _root;
+    if (root == null) return null;
+    return _relativeFontDir(await _ensureFonts(root), eventFolder);
+  }
+
+  Future<String?> _ensureFonts(String root) async {
+    try {
+      final dir = Directory(p.join(root, supportDir, 'fonts'));
+      await dir.create(recursive: true);
+      for (final w in _fontWeights) {
+        final f = File(p.join(dir.path, 'Vazirmatn-$w.woff2'));
+        if (!await f.exists()) {
+          final data =
+              await rootBundle.load('assets/webfonts/Vazirmatn-$w.woff2');
+          await f.writeAsBytes(data.buffer.asUint8List(), flush: true);
+        }
+      }
+      return dir.path;
+    } catch (_) {
+      // که فونټ ونه لیکل شو، پاڼه بیا هم کار کوي — یوازې د سیسټم
+      // فونټ کاروي. دا د ثبت د پرېښودو دلیل نه دی.
+      return null;
+    }
+  }
+
+  /// له پیښې څخه فونټ فولډر ته نسبي مسیر — نو پاڼه هر چیرې کار کوي،
+  /// حتی که ټول آرشیف بل ډرایو ته ولېږدول شي.
+  static String? _relativeFontDir(String? fontDir, String eventFolder) {
+    if (fontDir == null) return null;
+    try {
+      return p.relative(fontDir, from: eventFolder).replaceAll(r'\', '/');
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Future<void> saveEvent(EventMetadata e, {String? html}) async {
@@ -354,7 +404,8 @@ class IoBackend implements ArchiveBackend {
     await for (final ent in dir.list(followLinks: false)) {
       try {
         final name = p.basename(ent.path);
-        if (name.startsWith('.')) continue;
+        // د پروګرام خپل فولډر کاروونکي ته نه ښیو
+        if (name.startsWith('.') || name == supportDir) continue;
         final st = await ent.stat();
         if (st.type == FileSystemEntityType.directory) {
           final isEvent =
@@ -575,7 +626,11 @@ Future<void> _scanIsolate((SendPort, String) args) async {
       await for (final e in Directory(current).list(followLinks: false)) {
         if (e is Directory) {
           final name = p.basename(e.path);
-          if (name.startsWith('.') || name == IoBackend.attachmentsDir) continue;
+          if (name.startsWith('.') ||
+              name == IoBackend.attachmentsDir ||
+              name == IoBackend.supportDir) {
+            continue;
+          }
           queue.add(e.path);
         }
       }

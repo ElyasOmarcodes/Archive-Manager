@@ -49,6 +49,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/fonts/
+    # دا woff2 فایلونه د پروګرام دننه نه کارول کیږي — بلکه یو ځل د
+    # آرشیف ریښې ته لیکل کیږي، نو هره جوړه شوې `index.html` پاڼه یې
+    # په هر کمپیوټر کې (آن پرته له انټرنیټه) وکاروي.
+    - assets/webfonts/
   fonts:
     - family: Vazirmatn
       fonts:

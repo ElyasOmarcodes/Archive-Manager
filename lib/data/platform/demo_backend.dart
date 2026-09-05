@@ -224,6 +224,10 @@ class DemoBackend implements ArchiveBackend {
   Future<void> revealInFileManager(String path) async {}
   @override
   Future<String?> readHtml(String eventFolder) async => _html[eventFolder];
+
+  // د نندارې نسخه پر ډیسک هیڅ نه لیکي، نو فونټ فولډر هم نشته.
+  @override
+  Future<String?> webFontDirFor(String eventFolder) async => null;
   @override
   Future<List<int>?> readBytes(String path) async => null;
 

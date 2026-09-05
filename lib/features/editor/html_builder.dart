@@ -10,7 +10,7 @@ import '../../data/models/models.dart';
 /// * سپین/تیاره تیم لري چې کاروونکی یې بدلولی شي
 /// * انځورونه فول‌سکرین کوي، ویډیو/غږ پکې پلې کیږي
 /// * ټول متن ښي/کیڼ لور ته او فایلونه منځ ته تنظیمیږي
-String buildEventHtml(EventMetadata e, {String? title}) {
+String buildEventHtml(EventMetadata e, {String? title, String? fontDir}) {
   final b = StringBuffer();
 
   b.writeln('<!DOCTYPE html>');
@@ -30,7 +30,7 @@ String buildEventHtml(EventMetadata e, {String? title}) {
   b.writeln('<meta name="event-date-qamari" content="${_esc(e.date.qamariText)}">');
   b.writeln('<meta name="event-date-miladi" content="${_esc(e.date.miladiText)}">');
 
-  b.writeln('<style>${_css()}</style>');
+  b.writeln('<style>${_fontFace(fontDir)}${_css()}</style>');
   b.writeln('</head>');
   b.writeln('<body>');
 
@@ -235,6 +235,29 @@ void _block(StringBuffer b, Block bl) {
 // ═══════════════════════════════════════════════════════════
 //  ښکلا
 // ═══════════════════════════════════════════════════════════
+
+/// د وزیر متن فونټ د یوه نسبي مسیر څخه راولي.
+///
+/// فونټونه یو ځل د آرشیف ریښې کې ساتل کیږي (`_arvitch/fonts/`)، نه په
+/// هره پاڼه کې — نو زرګونه پیښې هم یوازې یو ځل ~۲۰۰KB نیسي، او پاڼې
+/// پرته له انټرنیټه هم سم فونټ ښیي.
+String _fontFace(String? dir) {
+  if (dir == null || dir.isEmpty) return '';
+  const weights = [
+    (400, 'Regular'),
+    (600, 'SemiBold'),
+    (700, 'Bold'),
+    (800, 'ExtraBold'),
+  ];
+  final b = StringBuffer();
+  for (final (weight, name) in weights) {
+    b.writeln('@font-face{'
+        'font-family:Vazirmatn;'
+        'src:url("$dir/Vazirmatn-$name.woff2") format("woff2");'
+        'font-weight:$weight;font-style:normal;font-display:swap;}');
+  }
+  return b.toString();
+}
 
 String _css() => '''
 :root{

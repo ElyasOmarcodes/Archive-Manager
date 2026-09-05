@@ -166,6 +166,13 @@ abstract class ArchiveBackend {
   /// د پیښې د پاڼې HTML لوستل (د پریویو لپاره).
   Future<String?> readHtml(String eventFolder);
 
+  /// د جوړې شوې `index.html` لپاره د وزیر متن فونټ نسبي مسیر.
+  ///
+  /// فونټونه یو ځل د آرشیف ریښې کې ساتل کیږي، نه په هره پاڼه کې —
+  /// نو زرګونه پیښې هم یوازې یو ځل ~۲۰۰KB نیسي. که چیرې و نه شي
+  /// جوړېدای، `null` راګرځي او پاڼه د سیسټم فونټ کاروي.
+  Future<String?> webFontDirFor(String eventFolder);
+
   /// د یوه فایل بایټونه — د انځور د پریویو لپاره.
   Future<List<int>?> readBytes(String path);
 }
