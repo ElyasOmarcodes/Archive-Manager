@@ -1,3 +1,7 @@
+// د دې ازموینې موخه همدا ده چې پایلې چاپ کړي — نو `print` دلته
+// قصدي دی، نه یوه پاتې شوې د ډیبګ کرښه.
+// ignore_for_file: avoid_print
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:archive_manager/core/date/pashto_calendar.dart';
 

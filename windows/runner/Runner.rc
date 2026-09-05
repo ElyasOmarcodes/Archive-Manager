@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "af.arvitch" "\0"
-            VALUE "FileDescription", "archive_manager" "\0"
+            VALUE "FileDescription", "Archive Quick Manager" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "archive_manager" "\0"
+            VALUE "InternalName", "ArchiveManager" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 af.arvitch. All rights reserved." "\0"
-            VALUE "OriginalFilename", "archive_manager.exe" "\0"
-            VALUE "ProductName", "archive_manager" "\0"
+            VALUE "OriginalFilename", "ArchiveManager.exe" "\0"
+            VALUE "ProductName", "Archive Quick Manager" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

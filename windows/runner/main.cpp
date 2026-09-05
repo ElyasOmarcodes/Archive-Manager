@@ -27,7 +27,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"archive_manager", origin, size)) {
+  if (!window.Create(L"\u062f \u0622\u0631\u0634\u064a\u0641 \u0686\u067c\u06a9 \u0645\u062f\u064a\u0631", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

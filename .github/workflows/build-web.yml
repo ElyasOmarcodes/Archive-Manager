@@ -1,0 +1,30 @@
+name: د ویب نندارې جوړول (Build Web Demo)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: د ویب نسخه
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test
+      # ویب نسخه د نندارې لپاره ده — د یادښت دننه نمونه ډیټا کاروي
+      - run: flutter build web --release --base-href /
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-demo
+          path: build/web
+          retention-days: 14

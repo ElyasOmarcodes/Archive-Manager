@@ -1,0 +1,133 @@
+name: د وینډوز خروجي جوړول (Build Windows EXE)
+
+# کله چې دې څانګو ته پش وشي، یا په لاسي توګه چلول کیږي.
+on:
+  push:
+    branches: [main, master, 'claude/**']
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'یوه GitHub Release هم جوړه کړه'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.47.2'
+  APP_NAME: 'ArchiveManager'
+
+jobs:
+  # ═══════════════════════════════════════════════════════════
+  #  ۱) ازموینې — که ماتې وخوري، خروجي نه جوړیږي
+  # ═══════════════════════════════════════════════════════════
+  test:
+    name: ازموینې او د کوډ کتنه
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: پکېجونه راوړل
+        run: flutter pub get
+
+      - name: د کوډ کتنه
+        run: flutter analyze --no-fatal-infos
+
+      - name: ازموینې
+        run: flutter test
+
+  # ═══════════════════════════════════════════════════════════
+  #  ۲) د وینډوز جوړونه + فوق‌العاده کمپرس
+  # ═══════════════════════════════════════════════════════════
+  build:
+    name: د وینډوز .exe جوړول
+    needs: test
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: پکېجونه راوړل
+        run: flutter pub get
+
+      - name: د وینډوز ریلیز جوړول
+        run: flutter build windows --release
+
+      - name: د خروجي تنظیم
+        shell: pwsh
+        run: |
+          $out = "dist/${{ env.APP_NAME }}"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          Copy-Item -Recurse -Force `
+            "build/windows/x64/runner/Release/*" $out
+          # یو لنډ لارښود د کاروونکي لپاره
+          @"
+          د آرشیف چټک مدیر
+          ==================
+
+          ۱) دا فولډر بشپړ راوباسئ (extract).
+          ۲) ArchiveManager.exe چلوئ.
+          ۳) لومړی ځل به ستاسو د آرشیف فولډر وغواړي.
+
+          نوټ: ټول فایلونه یوځای وساتئ — .exe یوازې کار نه کوي.
+          "@ | Out-File -Encoding utf8 "$out/README.txt"
+          Get-ChildItem -Recurse $out | Measure-Object -Property Length -Sum |
+            ForEach-Object { "خام حجم: {0:N1} MB" -f ($_.Sum / 1MB) }
+
+      # ── فوق‌العاده کمپرس: xz -9 --extreme ──
+      #
+      # `tar` + `xz -9e` تر ZIP ډېر ښه کمپرس کوي، ځکه چې xz د LZMA2
+      # الګوریتم کاروي او `-e` (extreme) یې لا نور هم فشاروي.
+      # د ډېرو یو شان DLL فایلونو له امله دلته توپیر ډېر لوی وي.
+      - name: xz کمپرس (اعظمي کچه)
+        shell: bash
+        run: |
+          cd dist
+          tar -cf "${APP_NAME}-windows-x64.tar" "${APP_NAME}"
+          # -9e = تر ټولو لوړه کچه؛ -T0 = ټول کورونه وکاروه
+          xz -9 --extreme --threads=0 --verbose \
+            "${APP_NAME}-windows-x64.tar"
+          ls -lh
+          echo "---"
+          echo "کمپرس شوی حجم: $(du -h ${APP_NAME}-windows-x64.tar.xz | cut -f1)"
+
+      - name: د خروجي اپلوډ
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}-windows-x64
+          path: dist/${{ env.APP_NAME }}-windows-x64.tar.xz
+          # فایل مخکې کمپرس شوی — نو دوه‌ځلې کمپرس ته اړتیا نشته
+          compression-level: 0
+          retention-days: 90
+
+      # ── که ټګ وي یا په لاسي توګه وغوښتل شي، ریلیز جوړوو ──
+      - name: ریلیز جوړول
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ env.APP_NAME }}-windows-x64.tar.xz
+          generate_release_notes: true
+          body: |
+            ## د آرشیف چټک مدیر
+
+            **د ډانلوډ او چلولو لار:**
+            ۱. `${{ env.APP_NAME }}-windows-x64.tar.xz` ډانلوډ کړئ
+            ۲. د [7-Zip](https://www.7-zip.org/) په مرسته یې راوباسئ
+               (دوه ځله: لومړی `.xz`، بیا `.tar`)
+            ۳. `${{ env.APP_NAME }}.exe` چلوئ
+
+            > ټول فایلونه یوځای وساتئ — `.exe` په یوازې ځان کار نه کوي.
