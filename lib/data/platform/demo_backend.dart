@@ -2,7 +2,7 @@ import 'dart:async';
 
 import '../../core/date/pashto_calendar.dart';
 import '../../core/theme/tokens.dart';
-import '../index/index_db.dart';
+import '../index/memory_index.dart';
 import '../models/models.dart';
 import '../models/query.dart';
 import 'backend.dart';
@@ -15,7 +15,7 @@ class DemoBackend implements ArchiveBackend {
   DemoBackend({this.seeded = true});
 
   final bool seeded;
-  final IndexDb _db = IndexDb.openMemory();
+  final MemoryIndex _db = MemoryIndex();
   AppSettings _settings = AppSettings(
     archiveRoot: r'E:\Arvitch',
     onboarded: true,

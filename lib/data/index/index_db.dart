@@ -7,6 +7,7 @@ import '../../core/theme/tokens.dart';
 import '../models/models.dart';
 import '../models/query.dart';
 import '../platform/backend.dart';
+import 'event_index.dart';
 
 /// **د لټون ماشین — SQLite + FTS5.**
 ///
@@ -16,7 +17,7 @@ import '../platform/backend.dart';
 /// **ولې چټک دی:** مونږ د لټون پر مهال ډیسک نه ګورو. ټول لټون د دې کوچني
 /// ایندکس دننه کیږي چې په بشپړ ډول د RAM دننه ځای نیسي — نو د ۵TB ډرایو
 /// او د ۵GB ډرایو د لټون وخت یو شان دی.
-class IndexDb {
+class IndexDb implements EventIndex {
   IndexDb._(this._db);
 
   final Database _db;
@@ -39,6 +40,7 @@ class IndexDb {
     return IndexDb._(db);
   }
 
+  @override
   void dispose() {
     _s?.dispose();
     _s = null;
@@ -51,7 +53,7 @@ class IndexDb {
 
   /// د سکیما نسخه — که بدله شي، ایندکس پخپله بیا جوړیږي
   /// (ډیټا نه ورکیږي، ځکه حقیقت د `metadata.json` فایلونه دي).
-  static const int schemaVersion = 2;
+  static const int schemaVersion = 3;
 
   static void _migrate(Database db) {
     final v = db.select('PRAGMA user_version').first.values.first as int;
@@ -139,6 +141,7 @@ class IndexDb {
   //  لیکل
   // ═════════════════════════════════════════════════════════
 
+  @override
   void upsert(EventMetadata e) {
     _db.execute('BEGIN IMMEDIATE');
     try {
@@ -151,6 +154,7 @@ class IndexDb {
   }
 
   /// ډله‌ییز داخلول — د بشپړ سکن لپاره ډېر چټک (یوه معامله).
+  @override
   void upsertAll(Iterable<EventMetadata> items) {
     _db.execute('BEGIN IMMEDIATE');
     try {
@@ -170,8 +174,10 @@ class IndexDb {
       e.id, e.title, e.folderPath, e.category, e.summary, e.rating,
       e.colorTag.name, e.date.jdn, e.date.shamsi.year, e.date.shamsi.month,
       e.date.qamari.year, e.date.gregorian.year, e.attachmentCount,
-      e.totalBytes, e.createdAt.millisecondsSinceEpoch,
-      e.updatedAt.millisecondsSinceEpoch, jsonEncode(e.toJson()),
+      // میکروثانیې (نه میلي‌ثانیې): په یوه میلي‌ثانیه کې لسګونه پیښې
+      // ثبت کیدی شي، او د دې تر منځ توپیر باید د ترتیب پر مهال پاتې شي.
+      e.totalBytes, e.createdAt.microsecondsSinceEpoch,
+      e.updatedAt.microsecondsSinceEpoch, jsonEncode(e.toJson()),
     ]);
     // د دې پیښې عددي کیلي — بیا یې FTS ته هم ورکوو، نو دواړه سره تړلي دي.
     final rid = st.ridSel.select([e.id]).first['rowid'] as int;
@@ -198,6 +204,7 @@ class IndexDb {
     }
   }
 
+  @override
   void remove(String id) {
     _db.execute('BEGIN IMMEDIATE');
     try {
@@ -217,6 +224,7 @@ class IndexDb {
     }
   }
 
+  @override
   void clear() {
     _db.execute('DELETE FROM events');
     _db.execute('DELETE FROM events_fts');
@@ -302,23 +310,30 @@ class IndexDb {
     return tokens.map((t) => '"${t.replaceAll('"', '')}"*').join(' AND ');
   }
 
+  /// **د ترتیب ټاکلې (deterministic) لار.**
+  ///
+  /// هر ترتیب د `id` په دویمه کیلي پای ته رسیږي — نو کله چې دوه پیښې
+  /// یو شان ارزښت ولري (بېلګه: یو شان اندازه)، ترتیب یې تل یو شان وي.
+  /// پرته له دې، SQLite او Dart دواړه خپل خوښ ترتیب راوړي او کاروونکی
+  /// د هر تازه کولو سره بېل ترتیب ویني.
   static String _orderBy(SortField s) => switch (s) {
-        SortField.dateDesc => 'e.jdn DESC, e.title ASC',
-        SortField.dateAsc => 'e.jdn ASC, e.title ASC',
-        SortField.titleAsc => 'e.title ASC',
-        SortField.titleDesc => 'e.title DESC',
-        SortField.ratingDesc => 'e.rating DESC, e.jdn DESC',
-        SortField.ratingAsc => 'e.rating ASC, e.jdn DESC',
-        SortField.createdDesc => 'e.created_at DESC',
-        SortField.updatedDesc => 'e.updated_at DESC',
-        SortField.sizeDesc => 'e.total_bytes DESC',
-        SortField.filesDesc => 'e.file_count DESC',
+        SortField.dateDesc => 'e.jdn DESC, e.title ASC, e.id ASC',
+        SortField.dateAsc => 'e.jdn ASC, e.title ASC, e.id ASC',
+        SortField.titleAsc => 'e.title ASC, e.id ASC',
+        SortField.titleDesc => 'e.title DESC, e.id ASC',
+        SortField.ratingDesc => 'e.rating DESC, e.jdn DESC, e.id ASC',
+        SortField.ratingAsc => 'e.rating ASC, e.jdn DESC, e.id ASC',
+        SortField.createdDesc => 'e.created_at DESC, e.id ASC',
+        SortField.updatedDesc => 'e.updated_at DESC, e.id ASC',
+        SortField.sizeDesc => 'e.total_bytes DESC, e.id ASC',
+        SortField.filesDesc => 'e.file_count DESC, e.id ASC',
       };
 
   // ═════════════════════════════════════════════════════════
   //  لوستل
   // ═════════════════════════════════════════════════════════
 
+  @override
   List<EventMetadata> search(EventQuery q) {
     final (where, args) = _where(q);
     final rows = _db.select(
@@ -329,12 +344,14 @@ class IndexDb {
     return rows.map(_decode).toList();
   }
 
+  @override
   int count(EventQuery q) {
     final (where, args) = _where(q);
     final r = _db.select('SELECT COUNT(*) c FROM events e $where', args);
     return r.isEmpty ? 0 : r.first['c'] as int;
   }
 
+  @override
   EventMetadata? byId(String id) {
     final r = _db.select('SELECT payload, folder FROM events WHERE id = ?', [id]);
     return r.isEmpty ? null : _decode(r.first);
@@ -349,6 +366,7 @@ class IndexDb {
   ///
   /// هره ډله د خپل ځان پرته حسابیږي (`exclude`)، نو کاروونکی ویني چې
   /// «که دا افشن هم و‌ټاکم، څو پایلې پاتې کیږي» — نه صفر ته رسیږي.
+  @override
   FacetCounts facets(EventQuery q) {
     Map<K, int> group<K>(String sql, String excludeGroup, K Function(String) key,
         {List<Object?> extra = const []}) {
@@ -419,6 +437,7 @@ class IndexDb {
   //  لنډیز
   // ═════════════════════════════════════════════════════════
 
+  @override
   ArchiveStats stats() {
     final head = _db.select(
         'SELECT COUNT(*) c, COALESCE(SUM(file_count),0) f, '
@@ -483,6 +502,7 @@ class IndexDb {
   //  لغتونه
   // ═════════════════════════════════════════════════════════
 
+  @override
   List<VocabTerm> vocab(VocabKind kind) {
     final usage = switch (kind) {
       VocabKind.keyword =>
@@ -517,6 +537,7 @@ class IndexDb {
         VocabKind.category => 'category',
       };
 
+  @override
   void addVocab(VocabKind kind, VocabTerm t) => _db.execute(
         'INSERT INTO vocab (kind,name,color_tag,note) VALUES (?,?,?,?) '
         'ON CONFLICT(kind,name) DO UPDATE SET color_tag=excluded.color_tag, '
@@ -524,11 +545,13 @@ class IndexDb {
         [_vocabKey(kind), t.name, t.colorTag.name, t.note],
       );
 
+  @override
   void deleteVocabRow(VocabKind kind, String name) => _db
       .execute('DELETE FROM vocab WHERE kind = ? AND name = ?',
           [_vocabKey(kind), name]);
 
   /// هغه پیښې راګرځوي چې دا لغت کاروي — د بیا لیکلو لپاره.
+  @override
   List<EventMetadata> eventsUsing(VocabKind kind, String name) {
     final sql = switch (kind) {
       VocabKind.keyword =>

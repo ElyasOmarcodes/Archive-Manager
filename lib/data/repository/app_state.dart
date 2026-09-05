@@ -56,6 +56,10 @@ class AppState extends ChangeNotifier {
   EventMetadata? editing;
   bool previewMode = false;
 
+  /// کله چې د بلې پاڼې څخه اکسپلورر ته ځو، دا هغه فولډر دی چې
+  /// اکسپلورر باید پرې پرانیستل شي.
+  String? explorerTarget;
+
   // ── ډیټا ────────────────────────────────────────────────
   ArchiveStats stats = const ArchiveStats();
   List<EventMetadata> events = const [];
@@ -155,6 +159,22 @@ class AppState extends ChangeNotifier {
   // ═══════════════════════════════════════════════════════
   //  ناوبري
   // ═══════════════════════════════════════════════════════
+
+  /// اکسپلورر په ټاکلي فولډر کې پرانیزي — د پریویو له «داخلي» تڼۍ.
+  void openInExplorer(String folder) {
+    explorerTarget = folder;
+    editing = null;
+    previewMode = false;
+    page = AppPage.explorer;
+    notifyListeners();
+  }
+
+  /// اکسپلورر یې مصرفوي، نو بیا بیا نه پلې کیږي.
+  String? consumeExplorerTarget() {
+    final t = explorerTarget;
+    explorerTarget = null;
+    return t;
+  }
 
   void go(AppPage p) {
     page = p;
