@@ -25,6 +25,12 @@
 |---|---|
 | ![اکسپلورر](docs/screenshots/03-explorer.png) | ![تیاره](docs/screenshots/01-dashboard-dark.png) |
 
+**سایډبار — پراخ او ټول شوی حالت** (نرم انتقال):
+
+| پراخ | ټول شوی |
+|---|---|
+| ![پراخ](docs/screenshots/01-dashboard.png) | ![ټول](docs/screenshots/23-sidebar-collapsed.png) |
+
 **په کوچنیو سکرینونو کې** — سایډبار پخپله راټولیږي، فلټر پینل تڼۍ ته
 اوړي، وسیلې ښکته کرښې ته ځي. هیڅ برخه بهر نه لویږي:
 

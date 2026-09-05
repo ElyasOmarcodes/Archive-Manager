@@ -8,9 +8,10 @@ import '../../widgets/common.dart';
 
 /// **سایډبار** — د پښتو RTL لپاره ښي طرف ته.
 ///
-/// هر توکی یوه نرمه رنګینه آیکن کاشۍ لري، او د شمېر بیج یې بل لور ته —
-/// نو لیست په یوه نظر لوستل کیږي او رنګونه د پېژندنې لار جوړوي.
-class AppSidebar extends StatelessWidget {
+/// دوه حالته لري: **پراخ** (آیکن + متن) او **ټول شوی** (یوازې آیکن).
+/// د دواړو ترمنځ بدلون یوه یوازینۍ انیمیشن چلوي — نو سور، متن او
+/// بیجونه ټول سره یوځای او نرم حرکت کوي، نه دا چې یو دم ورک شي.
+class AppSidebar extends StatefulWidget {
   const AppSidebar({
     super.key,
     required this.onNewEvent,
@@ -19,69 +20,120 @@ class AppSidebar extends StatelessWidget {
 
   final VoidCallback onNewEvent;
 
-  /// کله چې کړکۍ تنګه شي، سایډبار پخپله راټولیږي — بې له دې چې
-  /// د کاروونکي خپله خوښه بدله کړي.
+  /// کله چې کړکۍ تنګه شي، سایډبار پخپله راټولیږي.
   final bool forceCollapsed;
 
-  static const double expandedWidth = 252;
-  static const double collapsedWidth = 76;
+  static const double expandedWidth = 258;
+  static const double collapsedWidth = 78;
+
+  @override
+  State<AppSidebar> createState() => _AppSidebarState();
+}
+
+class _AppSidebarState extends State<AppSidebar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: AppTokens.slow,
+    value: 1,
+  );
+
+  /// ۰ = بشپړ ټول شوی، ۱ = بشپړ پراخ.
+  late final Animation<double> _t = CurvedAnimation(
+    parent: _c,
+    curve: AppTokens.emphasized,
+    reverseCurve: AppTokens.emphasized.flipped,
+  );
+
+  bool _lastOpen = true;
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void _sync(bool open) {
+    if (open == _lastOpen) return;
+    _lastOpen = open;
+    open ? _c.forward() : _c.reverse();
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
-    final open = s.sidebarExpanded && !forceCollapsed;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final open = s.sidebarExpanded && !widget.forceCollapsed;
 
-    return AnimatedContainer(
-      duration: AppTokens.base,
-      curve: AppTokens.emphasized,
-      width: open ? expandedWidth : collapsedWidth,
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        border: Border(right: BorderSide(color: cs.outlineVariant)),
-      ),
-      child: Column(
-        children: [
-          _Brand(open: open),
-          // تل ښکاره — نو نوې پیښه هر وخت یو کلیک لرې وي.
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-                open ? AppTokens.s12 : AppTokens.s12,
-                AppTokens.s12,
-                open ? AppTokens.s12 : AppTokens.s12,
-                AppTokens.s4),
-            child: _NewEventButton(open: open, onTap: onNewEvent),
+    // د بنا پر مهال setState نه شو کولی — نو انیمیشن وروسته پیلوو.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _sync(open));
+
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (context, _) {
+        final t = _t.value;
+        final width = AppSidebar.collapsedWidth +
+            (AppSidebar.expandedWidth - AppSidebar.collapsedWidth) * t;
+
+        return Container(
+          width: width,
+          decoration: BoxDecoration(
+            // په تیاره تیم کې سایډبار یو څه توره ده تر محتوا — نو د
+            // پینل په څېر ښکاري، نه چې د پاڼې سره ګډه شي.
+            color: dark ? cs.surfaceContainerLow : cs.surfaceContainerLowest,
+            border: Border(right: BorderSide(color: cs.outlineVariant)),
+            boxShadow: [
+              if (dark)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 22,
+                  offset: const Offset(6, 0),
+                ),
+            ],
           ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(
-                  horizontal: open ? AppTokens.s12 : AppTokens.s8),
+          child: ClipRect(
+            child: Column(
               children: [
-                _GroupLabel('آرشیف', open: open),
-                for (final p in const [
-                  AppPage.dashboard,
-                  AppPage.events,
-                  AppPage.explorer,
-                ])
-                  _NavItem(page: p, open: open, count: _countFor(s, p)),
+                _Brand(t: t, onToggle: s.toggleSidebar, locked: widget.forceCollapsed),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppTokens.s12, AppTokens.s12, AppTokens.s12, AppTokens.s4),
+                  child: _NewEventButton(t: t, onTap: widget.onNewEvent),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppTokens.s12),
+                    children: [
+                      _GroupLabel('آرشیف', t: t),
+                      for (final p in const [
+                        AppPage.dashboard,
+                        AppPage.events,
+                        AppPage.explorer,
+                      ])
+                        _NavItem(page: p, t: t, count: _countFor(s, p)),
 
-                _GroupLabel('مدیریت', open: open),
-                for (final p in const [
-                  AppPage.keywords,
-                  AppPage.categories,
-                  AppPage.persons,
-                ])
-                  _NavItem(page: p, open: open, count: _countFor(s, p)),
+                      _GroupLabel('مدیریت', t: t),
+                      for (final p in const [
+                        AppPage.keywords,
+                        AppPage.categories,
+                        AppPage.persons,
+                      ])
+                        _NavItem(page: p, t: t, count: _countFor(s, p)),
 
-                _GroupLabel('نور', open: open),
-                _NavItem(page: AppPage.settings, open: open),
-                const SizedBox(height: AppTokens.s24),
+                      _GroupLabel('نور', t: t),
+                      _NavItem(page: AppPage.settings, t: t),
+                      const SizedBox(height: AppTokens.s24),
+                    ],
+                  ),
+                ),
+                _DriveFooter(t: t),
               ],
             ),
           ),
-          _DriveFooter(open: open),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -95,12 +147,47 @@ class AppSidebar extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  د پراخېدو ګډ مرستندوی
+// ═══════════════════════════════════════════════════════════
+
+/// هغه محتوا چې یوازې په پراخ حالت کې ښکاري.
+///
+/// د پراخېدو پر مهال لومړی ځای جوړیږي، بیا متن راښکاره کیږي — نو
+/// حرکت طبیعي وي، نه چې متن د تنګ ځای دننه ونښلي.
+class _Reveal extends StatelessWidget {
+  const _Reveal({required this.t, required this.child, this.axis = Axis.horizontal});
+
+  final double t;
+  final Widget child;
+  final Axis axis;
+
+  /// متن یوازې د حرکت په دویمه نیمایي کې راڅرګندیږي.
+  static double fade(double t) => ((t - 0.45) / 0.55).clamp(0.0, 1.0);
+
+  @override
+  Widget build(BuildContext context) {
+    if (t <= 0.001) return const SizedBox.shrink();
+    return ClipRect(
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        widthFactor: axis == Axis.horizontal ? t : null,
+        heightFactor: axis == Axis.vertical ? t : null,
+        child: Opacity(opacity: fade(t), child: child),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 //  سرلیک
 // ═══════════════════════════════════════════════════════════
 
 class _Brand extends StatelessWidget {
-  const _Brand({required this.open});
-  final bool open;
+  const _Brand({required this.t, required this.onToggle, required this.locked});
+
+  final double t;
+  final VoidCallback onToggle;
+  final bool locked;
 
   @override
   Widget build(BuildContext context) {
@@ -108,102 +195,114 @@ class _Brand extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(
-          open ? AppTokens.s12 : AppTokens.s8, AppTokens.s16, AppTokens.s12, AppTokens.s16),
+      padding: const EdgeInsets.fromLTRB(
+          AppTokens.s12, AppTokens.s16, AppTokens.s12, AppTokens.s16),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: cs.outlineVariant)),
       ),
       child: Row(
         children: [
-          if (open)
-            IconButton(
-              tooltip: 'سایډبار وتړه',
-              icon: const Icon(Icons.view_sidebar_outlined, size: 19),
-              onPressed: s.toggleSidebar,
-              splashRadius: 18,
-              visualDensity: VisualDensity.compact,
-            ),
-          if (open) ...[
-            // Flexible — نو د اوږد ډرایو نوم سره هم سرلیک بهر نه لویږي
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('د آرشیف مدیریت',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurface,
-                          height: 1.3)),
-                  Text(
-                    'v1.0.1 · ${_driveLabel(s.settings.archiveRoot)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 10.5,
-                        color: cs.onSurfaceVariant,
-                        height: 1.3),
-                  ),
-                ],
+          // ── د ټولولو/پراخولو تڼۍ (چپ) ──
+          _Reveal(
+            t: t,
+            child: Padding(
+              padding: const EdgeInsets.only(left: AppTokens.s4),
+              child: IconButton(
+                tooltip: 'سایډبار وتړه',
+                onPressed: locked ? null : onToggle,
+                icon: const Icon(Icons.keyboard_double_arrow_right_rounded,
+                    size: 19),
+                splashRadius: 18,
+                visualDensity: VisualDensity.compact,
               ),
             ),
-            const SizedBox(width: AppTokens.s8),
-          ],
-          _AppMark(compact: !open, onTap: open ? null : s.toggleSidebar),
+          ),
+          // ── نوم + نسخه ──
+          Expanded(
+            child: _Reveal(
+              t: t,
+              child: Padding(
+                padding: const EdgeInsets.only(left: AppTokens.s8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('د آرشیف مدیریت',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: cs.onSurface,
+                            height: 1.3)),
+                    Text(
+                      'v1.0.2 · ${driveLabel(s.settings.archiveRoot)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: TextStyle(
+                          fontSize: 10.5,
+                          color: cs.onSurfaceVariant,
+                          height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // ── نښه (تل ښي طرف ته) ──
+          _AppMark(t: t, onTap: locked ? null : onToggle),
         ],
       ),
     );
   }
 
-  static String _driveLabel(String? root) {
+  static String driveLabel(String? root) {
     if (root == null || root.isEmpty) return 'ARCHIVE';
-    final seg = root
-        .split(RegExp(r'[\\/]'))
-        .where((e) => e.trim().isNotEmpty)
-        .toList();
+    final seg =
+        root.split(RegExp(r'[\\/]')).where((e) => e.trim().isNotEmpty).toList();
     if (seg.isEmpty) return 'ARCHIVE';
     return seg.last.toUpperCase();
   }
 }
 
 class _AppMark extends StatelessWidget {
-  const _AppMark({required this.compact, this.onTap});
-  final bool compact;
+  const _AppMark({required this.t, this.onTap});
+  final double t;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final mark = Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [Color(0xFF3B82F6), Color(0xFF4F6BED)],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.35),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: const Icon(Icons.hub_rounded, color: Colors.white, size: 20),
-    );
+    // په ټول شوي حالت کې نښه یو څه لویه شي — نو د وهلو ښه هدف وي.
+    final size = 38 + (1 - t) * 4;
 
-    if (onTap == null) return mark;
     return Tooltip(
-      message: 'سایډبار پرانیزه',
+      message: t < 0.5 ? 'سایډبار پرانیزه' : '',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: mark,
+        borderRadius: BorderRadius.circular(13),
+        child: AnimatedContainer(
+          duration: AppTokens.base,
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [Color(0xFF4F8DF9), Color(0xFF4F6BED)],
+            ),
+            borderRadius: BorderRadius.circular(13),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF4F8DF9).withValues(alpha: 0.42),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Icon(Icons.hub_rounded, color: Colors.white, size: size * 0.52),
+        ),
       ),
     );
   }
@@ -214,30 +313,45 @@ class _AppMark extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 
 class _GroupLabel extends StatelessWidget {
-  const _GroupLabel(this.text, {required this.open});
+  const _GroupLabel(this.text, {required this.t});
   final String text;
-  final bool open;
+  final double t;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    if (!open) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppTokens.s12, vertical: AppTokens.s8),
-        child: Divider(height: 1, color: cs.outlineVariant),
-      );
-    }
+
+    // په ټول شوي حالت کې سرلیک یوې کرښې ته اوړي.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppTokens.s8, AppTokens.s20, AppTokens.s8, AppTokens.s8),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: cs.onSurfaceVariant,
-        ),
+      padding: const EdgeInsets.only(top: AppTokens.s16, bottom: AppTokens.s8),
+      child: Stack(
+        alignment: AlignmentDirectional.centerEnd,
+        children: [
+          Opacity(
+            opacity: 1 - _Reveal.fade(t),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppTokens.s8),
+              child: Divider(height: 1, color: cs.outlineVariant),
+            ),
+          ),
+          _Reveal(
+            t: t,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppTokens.s8),
+              child: Text(
+                text,
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -247,65 +361,106 @@ class _GroupLabel extends StatelessWidget {
 //  د ناوبرۍ توکی
 // ═══════════════════════════════════════════════════════════
 
-class _NavItem extends StatelessWidget {
-  const _NavItem({required this.page, required this.open, this.count});
+class _NavItem extends StatefulWidget {
+  const _NavItem({required this.page, required this.t, this.count});
 
   final AppPage page;
-  final bool open;
+  final double t;
   final int? count;
+
+  @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
-    final active = s.page == page && s.editing == null;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final active = s.page == widget.page && s.editing == null;
+    final t = widget.t;
+    final ink = AppTokens.tileInk[widget.page.tone]!;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 5),
       child: Tooltip(
-        message: open ? '' : page.title,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => s.go(page),
-            borderRadius: BorderRadius.circular(12),
+        message: t < 0.5 ? widget.page.title : '',
+        waitDuration: const Duration(milliseconds: 300),
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hover = true),
+          onExit: (_) => setState(() => _hover = false),
+          child: GestureDetector(
+            onTap: () => s.go(widget.page),
+            behavior: HitTestBehavior.opaque,
             child: AnimatedContainer(
-              duration: AppTokens.fast,
+              duration: AppTokens.base,
               curve: AppTokens.ease,
-              padding: EdgeInsets.symmetric(
-                  horizontal: open ? AppTokens.s8 : 0, vertical: 7),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppTokens.s6, vertical: 6),
               decoration: BoxDecoration(
-                // فعال توکی یو خنثی نرم پس‌منظر لري — رنګ یوازې د
-                // آیکن کاشۍ کې دی، نو لیست ارام او پاک ښکاري.
-                color: active ? cs.surfaceContainerHigh : null,
-                borderRadius: BorderRadius.circular(12),
+                color: active
+                    ? (dark
+                        ? ink.withValues(alpha: 0.16)
+                        : cs.surfaceContainerHigh)
+                    : _hover
+                        ? (dark
+                            ? Colors.white.withValues(alpha: 0.045)
+                            : cs.surfaceContainer.withValues(alpha: 0.7))
+                        : null,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: active && dark
+                      ? ink.withValues(alpha: 0.32)
+                      : Colors.transparent,
+                ),
               ),
               child: Row(
-                mainAxisAlignment:
-                    open ? MainAxisAlignment.start : MainAxisAlignment.center,
                 children: [
-                  if (open && count != null) ...[
-                    _CountBadge(count: count!, active: active),
-                    const SizedBox(width: AppTokens.s8),
-                  ] else if (open)
-                    const SizedBox(width: 2),
-                  if (open) const Spacer(),
-                  if (open)
-                    Flexible(
-                      child: Text(
-                        page.title,
-                        textAlign: TextAlign.end,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight:
-                              active ? FontWeight.w700 : FontWeight.w500,
-                          color: cs.onSurface,
+                  // ① آیکن — تل تر ټولو ښي لور ته
+                  _IconTile(
+                    tone: widget.page.tone,
+                    icon: widget.page.icon,
+                    active: active,
+                    hovered: _hover,
+                  ),
+
+                  // ② متن — آیکن ته ورپسې
+                  //
+                  // `Expanded` نه `Flexible`+`Spacer`: هغه دواړه د پاتې
+                  // ځای پر سر سیالي کوله او متن یې پرې کاوه.
+                  Expanded(
+                    child: _Reveal(
+                      t: t,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                            right: AppTokens.s12, left: AppTokens.s8),
+                        child: Text(
+                          widget.page.title,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight:
+                                active ? FontWeight.w700 : FontWeight.w500,
+                            color: active
+                                ? (dark ? Colors.white : cs.onSurface)
+                                : cs.onSurface.withValues(alpha: 0.86),
+                          ),
                         ),
                       ),
                     ),
-                  if (open) const SizedBox(width: AppTokens.s12),
-                  _IconTile(tone: page.tone, icon: page.icon, active: active),
+                  ),
+
+                  // ③ شمېره — تر ټولو چپ لور ته
+                  if (widget.count != null)
+                    _Reveal(
+                      t: t,
+                      child: _CountBadge(count: widget.count!, active: active),
+                    ),
                 ],
               ),
             ),
@@ -322,32 +477,56 @@ class _IconTile extends StatelessWidget {
     required this.tone,
     required this.icon,
     this.active = false,
+    this.hovered = false,
   });
 
   final TileTone tone;
   final IconData icon;
   final bool active;
+  final bool hovered;
 
-  static const double size = 34;
+  static const double size = 36;
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final ink = AppTokens.tileInk[tone]!;
-    // په تیاره تیم کې نرم پس‌منظر د ډک رنګ کمزورې بڼه ده.
+
+    // په تیاره تیم کې نرم پس‌منظر د سطحې او ډک رنګ ترمنځ یوه ګډه ده —
+    // نو کاشۍ روښانه ښکاري خو سترګې نه ځوروي.
     final bg = dark
-        ? ink.withValues(alpha: active ? 0.26 : 0.18)
-        : AppTokens.tileBgLight[tone]!;
+        ? Color.lerp(cs.surfaceContainerHigh, ink,
+            active ? 0.30 : (hovered ? 0.22 : 0.16))!
+        : active
+            ? Color.lerp(AppTokens.tileBgLight[tone]!, ink, 0.10)!
+            : AppTokens.tileBgLight[tone]!;
+
+    final fg = dark ? Color.lerp(ink, Colors.white, 0.24)! : ink;
 
     return AnimatedContainer(
-      duration: AppTokens.fast,
+      duration: AppTokens.base,
+      curve: AppTokens.ease,
       width: size,
       height: size,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(size * 0.29),
+        borderRadius: BorderRadius.circular(11),
+        boxShadow: [
+          if (active)
+            BoxShadow(
+              color: ink.withValues(alpha: dark ? 0.30 : 0.24),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+        ],
       ),
-      child: Icon(icon, size: size * 0.5, color: dark ? ink : ink),
+      child: AnimatedScale(
+        duration: AppTokens.base,
+        curve: AppTokens.spring,
+        scale: hovered ? 1.08 : 1.0,
+        child: Icon(icon, size: 18, color: fg),
+      ),
     );
   }
 }
@@ -360,14 +539,24 @@ class _CountBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: active ? cs.surfaceContainerHighest : cs.surfaceContainer,
+        color: active
+            ? (dark
+                ? Colors.white.withValues(alpha: 0.10)
+                : cs.surfaceContainerHighest)
+            : (dark
+                ? Colors.white.withValues(alpha: 0.055)
+                : cs.surfaceContainer),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Text(
-        PashtoDigits.to(_grouped(count)),
+        PashtoDigits.to(grouped(count)),
+        maxLines: 1,
+        softWrap: false,
         style: TextStyle(
           fontSize: 10.5,
           fontWeight: FontWeight.w600,
@@ -378,7 +567,7 @@ class _CountBadge extends StatelessWidget {
   }
 
   /// `12486` → `12,486`
-  static String _grouped(int n) {
+  static String grouped(int n) {
     final s = n.toString();
     final b = StringBuffer();
     for (var i = 0; i < s.length; i++) {
@@ -394,25 +583,41 @@ class _CountBadge extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 
 class _NewEventButton extends StatelessWidget {
-  const _NewEventButton({required this.open, required this.onTap});
-  final bool open;
+  const _NewEventButton({required this.t, required this.onTap});
+  final double t;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: open ? '' : 'نوې پیښه',
+      message: t < 0.5 ? 'نوې پیښه' : '',
       child: SizedBox(
         width: double.infinity,
-        height: 42,
-        child: FilledButton.icon(
+        height: 44,
+        child: FilledButton(
           onPressed: onTap,
-          icon: const Icon(Icons.add_rounded, size: 19),
-          label: open ? const Text('نوې پیښه') : const SizedBox.shrink(),
           style: FilledButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: open ? 14 : 0),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            padding: EdgeInsets.zero,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.add_rounded, size: 20),
+              Flexible(
+                child: _Reveal(
+                  t: t,
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: AppTokens.s8),
+                    child: Text('نوې پیښه',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -425,8 +630,8 @@ class _NewEventButton extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 
 class _DriveFooter extends StatelessWidget {
-  const _DriveFooter({required this.open});
-  final bool open;
+  const _DriveFooter({required this.t});
+  final double t;
 
   @override
   Widget build(BuildContext context) {
@@ -434,56 +639,63 @@ class _DriveFooter extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final disk = s.disk;
     final connected = s.settings.archiveRoot != null && !s.rootMissing;
-    final label = _Brand._driveLabel(s.settings.archiveRoot);
+    final label = _Brand.driveLabel(s.settings.archiveRoot);
 
-    if (!open) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: AppTokens.s12),
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: cs.outlineVariant)),
-        ),
-        child: Center(child: _Dot(ok: connected)),
-      );
-    }
+    final ratio = disk.usedRatio;
+    final barColor = ratio > 0.9
+        ? AppTokens.rose
+        : ratio > 0.75
+            ? AppTokens.amber
+            : cs.primary;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(
-          AppTokens.s12, AppTokens.s12, AppTokens.s12, AppTokens.s12),
+      padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: cs.outlineVariant)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              if (disk.isValid)
-                Text(
-                  '${humanBytes(disk.usedBytes)} / ${humanBytes(disk.totalBytes)}',
-                  style: TextStyle(
-                      fontSize: 10.5, color: cs.onSurfaceVariant),
-                ),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  label,
-                  textAlign: TextAlign.end,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurface),
+              // په ټول شوي حالت کې یوازې نښه پاتې کیږي — نو مرکز ته یې راولو
+              if (t < 0.5) const Spacer(),
+              _Dot(ok: connected),
+              Expanded(
+                child: _Reveal(
+                  t: t,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 6),
-              _Dot(ok: connected),
+              if (disk.isValid)
+                _Reveal(
+                  t: t,
+                  child: Text(
+                    '${humanBytes(disk.usedBytes)} / ${humanBytes(disk.totalBytes)}',
+                    maxLines: 1,
+                    softWrap: false,
+                    style:
+                        TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
+                  ),
+                ),
             ],
           ),
           if (disk.isValid) ...[
             const SizedBox(height: AppTokens.s8),
             TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: disk.usedRatio),
+              tween: Tween(begin: 0, end: ratio),
               duration: AppTokens.slower,
               curve: AppTokens.easeInOut,
               builder: (_, v, _) => ClipRRect(
@@ -496,12 +708,10 @@ class _DriveFooter extends StatelessWidget {
                       child: Container(
                         height: 5,
                         decoration: BoxDecoration(
-                          // ۹۰٪+ سور — ډرایو نږدې ډک دی
-                          color: v > 0.9
-                              ? AppTokens.rose
-                              : v > 0.75
-                                  ? AppTokens.amber
-                                  : cs.primary,
+                          gradient: LinearGradient(colors: [
+                            barColor.withValues(alpha: 0.65),
+                            barColor,
+                          ]),
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
@@ -510,22 +720,25 @@ class _DriveFooter extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              '${humanBytes(disk.freeBytes)} پاتې  ·  '
-              '${PashtoDigits.to(s.stats.eventCount)} پیښې',
-              textAlign: TextAlign.end,
-              style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
-            ),
-          ] else
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                connected ? 'چمتو' : 'ډرایو نه دی وصل',
-                textAlign: TextAlign.end,
-                style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
+            _Reveal(
+              t: t,
+              axis: Axis.vertical,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    '${humanBytes(disk.freeBytes)} پاتې  ·  '
+                    '${PashtoDigits.to(s.stats.eventCount)} پیښې',
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
+                  ),
+                ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -545,9 +758,9 @@ class _Dot extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: (ok ? AppTokens.green : AppTokens.rose)
-                  .withValues(alpha: 0.5),
-              blurRadius: 5,
+              color:
+                  (ok ? AppTokens.green : AppTokens.rose).withValues(alpha: 0.6),
+              blurRadius: 6,
             ),
           ],
         ),
