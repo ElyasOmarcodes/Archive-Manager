@@ -130,12 +130,20 @@ void main() {
     await t.pumpWidget(app(s));
     await t.pumpAndSettle();
 
-    for (final expected in [ThemeMode.light, ThemeMode.dark, ThemeMode.system]) {
-      final tapped = find.byTooltip(RegExp('تیم:'));
-      if (tapped.evaluate().isEmpty) break;
-      await t.tap(tapped.first);
+    // له «سیستم» پیل کیږي؛ هره وهنه یې مخکې بیایي:
+    // سیستم → سپین → تیاره → سیستم
+    expect(s.themeMode, ThemeMode.system);
+
+    for (final expected in const [
+      ThemeMode.light,
+      ThemeMode.dark,
+      ThemeMode.system,
+    ]) {
+      final btn = find.byTooltip(RegExp('^تیم:'));
+      expect(btn, findsOneWidget);
+      await t.tap(btn);
       await t.pumpAndSettle();
-      expect(s.themeMode, isNotNull);
+      expect(s.themeMode, expected);
     }
     expect(t.takeException(), isNull);
   });
