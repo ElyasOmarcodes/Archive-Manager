@@ -10,6 +10,7 @@ import '../../data/repository/app_state.dart';
 import '../../widgets/common.dart';
 import '../editor/new_event_dialog.dart';
 import 'explorer_tree.dart';
+import 'thumbnail.dart';
 
 enum ExplorerView {
   grid('لوی آیکنونه', Icons.grid_view_rounded),
@@ -1039,12 +1040,6 @@ class _EntryTile extends StatefulWidget {
 class _EntryTileState extends State<_EntryTile> {
   bool _hover = false;
 
-  IconData get _icon {
-    if (widget.entry.isEventFolder) return Icons.auto_awesome_mosaic_rounded;
-    if (widget.entry.isDirectory) return Icons.folder_rounded;
-    return mediaIcon(widget.entry.kind);
-  }
-
   Color _color(ColorScheme cs) {
     if (widget.entry.isEventFolder) return AppTokens.brand;
     if (widget.entry.isDirectory) return AppTokens.amber;
@@ -1107,7 +1102,7 @@ class _EntryTileState extends State<_EntryTile> {
         children: [
           Stack(
             children: [
-              Icon(_icon, size: 42, color: color),
+              FileThumb(entry: e, size: 46, color: color),
               if (e.isEventFolder)
                 Positioned(
                   right: 0,
@@ -1146,7 +1141,7 @@ class _EntryTileState extends State<_EntryTile> {
     if (!widget.details) {
       return Row(
         children: [
-          Icon(_icon, size: 19, color: color),
+          FileThumb(entry: e, size: 22, color: color),
           const SizedBox(width: AppTokens.s12),
           Expanded(
             child: Text(e.name,
@@ -1180,7 +1175,7 @@ class _EntryTileState extends State<_EntryTile> {
           flex: 4,
           child: Row(
             children: [
-              Icon(_icon, size: 17, color: color),
+              FileThumb(entry: e, size: 20, color: color),
               const SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(e.name,
