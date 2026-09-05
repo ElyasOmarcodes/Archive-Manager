@@ -9,10 +9,18 @@ import '../../widgets/tri_date_picker.dart';
 
 /// **د میټاډیټا چپ پینل** — درجه، رنګ، کیورډونه، شخصیتونه، کټګوري، تاریخ.
 class MetaPanel extends StatefulWidget {
-  const MetaPanel({super.key, required this.event, required this.onChanged});
+  const MetaPanel({
+    super.key,
+    required this.event,
+    required this.onChanged,
+    this.sheet = false,
+  });
 
   final EventMetadata event;
   final void Function(void Function()) onChanged;
+
+  /// کله چې په تنګ سکرین کې د کشېدونکې پاڼې دننه ښکاري.
+  final bool sheet;
 
   @override
   State<MetaPanel> createState() => _MetaPanelState();
@@ -70,10 +78,12 @@ class _MetaPanelState extends State<MetaPanel> {
     final e = widget.event;
 
     return Container(
-      width: 292,
+      width: widget.sheet ? null : 292,
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        border: Border(right: BorderSide(color: cs.outlineVariant)),
+        color: widget.sheet ? null : cs.surfaceContainerLow,
+        border: widget.sheet
+            ? null
+            : Border(right: BorderSide(color: cs.outlineVariant)),
       ),
       child: Column(
         children: [

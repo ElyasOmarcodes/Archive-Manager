@@ -36,6 +36,13 @@ class DemoBackend implements ArchiveBackend {
   @override
   Future<bool> pathExists(String path) async => true;
 
+  // د نندارې لپاره یو ۸TB هارډ چې ۳٫۱TB یې ډک دی.
+  @override
+  Future<DiskSpace> diskSpace(String path) async => const DiskSpace(
+        totalBytes: 8 * 1024 * 1024 * 1024 * 1024,
+        freeBytes: 4900 * 1024 * 1024 * 1024,
+      );
+
   @override
   Future<String?> pickDirectory({String? initial}) async => _root;
 

@@ -47,7 +47,7 @@ class DashboardPage extends StatelessWidget {
 
           // ── ګرافونه ──
           LayoutBuilder(builder: (context, c) {
-            final wide = c.maxWidth > 1080;
+            final wide = c.maxWidth > 940;
             final left = _MediaBreakdown(stats: stats);
             final right = _WeeklyChart(stats: stats);
             if (!wide) {
@@ -115,7 +115,15 @@ class _StatCards extends StatelessWidget {
     ];
 
     return LayoutBuilder(builder: (context, c) {
-      final cols = c.maxWidth > 1240 ? 5 : (c.maxWidth > 860 ? 3 : 2);
+      final cols = c.maxWidth > 1180
+          ? 5
+          : c.maxWidth > 900
+              ? 4
+              : c.maxWidth > 620
+                  ? 3
+                  : c.maxWidth > 380
+                      ? 2
+                      : 1;
       const gap = AppTokens.s16;
       final w = (c.maxWidth - gap * (cols - 1)) / cols;
       return Wrap(
@@ -125,6 +133,9 @@ class _StatCards extends StatelessWidget {
           for (var i = 0; i < items.length; i++)
             SizedBox(
               width: w,
+              // ثابت لوړوالی — نو هیڅ کارت له نورو لوړ نه راځي، آن که
+              // یو یې اضافي کرښه ولري.
+              height: 148,
               child: FadeSlideIn(
                 delay: Duration(milliseconds: 60 * i),
                 child: _GradientCard(
@@ -186,7 +197,6 @@ class _GradientCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
@@ -208,36 +218,46 @@ class _GradientCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: AppTokens.s16),
-            CountUp(
-              value,
-              style: const TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                height: 1.1,
+            const Spacer(),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: CountUp(
+                value,
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  height: 1.1,
+                ),
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
                 color: Colors.white.withValues(alpha: 0.92),
               ),
             ),
-            if (footnote.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
+            // دا کرښه تل ځای نیسي (که تشه هم وي) — نو ټول کارتونه
+            // په دننه کې یو شان تنظیم شوي وي.
+            SizedBox(
+              height: 17,
+              child: Text(
                 footnote,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: Colors.white.withValues(alpha: 0.78),
                 ),
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -478,11 +498,18 @@ class _RatingSpread extends StatelessWidget {
         children: [
           const SectionLabel('د اهمیت له مخې ویش (ستوري)',
               icon: Icons.star_rounded),
-          Row(
-            children: [
+          LayoutBuilder(builder: (context, c) {
+            // په تنګو سکرینونو کې شپږ کالمه نه ځاییږي — نو درې کیږي.
+            final perRow = c.maxWidth > 720 ? 6 : 3;
+            const gap = AppTokens.s12;
+            final w = (c.maxWidth - gap * (perRow - 1)) / perRow;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
               for (var r = 5; r >= 0; r--) ...[
-                if (r < 5) const SizedBox(width: AppTokens.s12),
-                Expanded(
+                SizedBox(
+                  width: w,
                   child: HoverLift(
                     onTap: () {
                       s.go(AppPage.events);
@@ -530,8 +557,9 @@ class _RatingSpread extends StatelessWidget {
                   ),
                 ),
               ],
-            ],
-          ),
+              ],
+            );
+          }),
         ],
       ),
     );
@@ -580,7 +608,7 @@ class _RecentEvents extends StatelessWidget {
           )
         else
           LayoutBuilder(builder: (context, c) {
-            final cols = c.maxWidth > 1300 ? 3 : (c.maxWidth > 820 ? 2 : 1);
+            final cols = c.maxWidth > 1180 ? 3 : (c.maxWidth > 720 ? 2 : 1);
             const gap = AppTokens.s16;
             final w = (c.maxWidth - gap * (cols - 1)) / cols;
             return Wrap(

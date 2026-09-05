@@ -188,6 +188,8 @@ class _EventEditorPageState extends State<EventEditorPage> {
           event: _event,
           dirty: _dirty,
           saving: _saving,
+          onPalette: _openPaletteSheet,
+          onMeta: _openMetaSheet,
           onSave: _save,
           onPreview: () async {
             if (_dirty) await _save(thenPreview: true);
@@ -203,10 +205,16 @@ class _EventEditorPageState extends State<EventEditorPage> {
           // په RTL کې د Row لومړی اولاد **ښي** لور ته ځي.
           // نو د ویجټونو پالېټ لومړی (ښي) او د میټاډیټا پینل وروستی
           // (چپ) — لکه څنګه چې غوښتل شوی و.
-          child: Row(
+          child: LayoutBuilder(builder: (context, c) {
+            // درې پینله ټول یوځای ~۱۰۸۰px غواړي. که ځای کم وي،
+            // لومړی پالېټ او بیا میټاډیټا پینل تړل کیږي او د پورتني
+            // بار له تڼیو څخه د کشېدونکو پاڼو په بڼه پرانیستل کیږي.
+            final showPalette = c.maxWidth >= 1080;
+            final showMeta = c.maxWidth >= 820;
+            return Row(
             children: [
               // ── ښي: د ویجټونو پالېټ ──
-              _Palette(onAdd: _addBlock),
+              if (showPalette) _Palette(onAdd: _addBlock),
 
               // ── منځ: د پاڼې جوړونه ──
               Expanded(
@@ -242,14 +250,53 @@ class _EventEditorPageState extends State<EventEditorPage> {
               ),
 
               // ── چپ: د میټاډیټا پینل ──
-              MetaPanel(
-                event: _event,
-                onChanged: (f) => _mutate(f),
-              ),
+              if (showMeta)
+                MetaPanel(
+                  event: _event,
+                  onChanged: (f) => _mutate(f),
+                ),
             ],
-          ),
+            );
+          }),
         ),
       ],
+    );
+  }
+
+  /// په تنګو سکرینونو کې — پالېټ د یوې کشېدونکې پاڼې دننه.
+  void _openPaletteSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: _PaletteGrid(onAdd: (k) {
+            Navigator.pop(ctx);
+            _addBlock(k);
+          }),
+        ),
+      ),
+    );
+  }
+
+  /// په تنګو سکرینونو کې — میټاډیټا د یوې کشېدونکې پاڼې دننه.
+  void _openMetaSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: FractionallySizedBox(
+          heightFactor: 0.9,
+          child: MetaPanel(
+            event: _event,
+            onChanged: _mutate,
+            sheet: true,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -266,10 +313,13 @@ class _Toolbar extends StatelessWidget {
     required this.onSave,
     required this.onPreview,
     required this.onBack,
+    required this.onPalette,
+    required this.onMeta,
   });
 
   final EventMetadata event;
   final bool dirty, saving;
+  final VoidCallback onPalette, onMeta;
   final Future<void> Function({bool thenPreview}) onSave;
   final VoidCallback onPreview, onBack;
 
@@ -277,10 +327,11 @@ class _Toolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final s = context.read<AppState>();
+    final width = MediaQuery.sizeOf(context).width;
 
     return Container(
       height: 62,
-      padding: const EdgeInsets.symmetric(horizontal: AppTokens.s16),
+      padding: const EdgeInsets.symmetric(horizontal: AppTokens.s12),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         border: Border(bottom: BorderSide(color: cs.outlineVariant)),
@@ -335,12 +386,36 @@ class _Toolbar extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: AppTokens.s16),
-          OutlinedButton.icon(
-            onPressed: () => s.backend.revealInFileManager(event.folderPath),
-            icon: const Icon(Icons.folder_open_rounded, size: 17),
-            label: const Text('فولډر پرانیزه'),
-          ),
+          const SizedBox(width: AppTokens.s12),
+          // په تنګو سکرینونو کې پینلونه تړل شوي دي، نو له دې تڼیو
+          // څخه د کشېدونکو پاڼو په بڼه پرانیستل کیږي.
+          if (width < 1080)
+            IconButton.filledTonal(
+              tooltip: 'ویجټونه',
+              onPressed: onPalette,
+              icon: const Icon(Icons.widgets_rounded, size: 18),
+            ),
+          if (width < 820) ...[
+            const SizedBox(width: AppTokens.s6),
+            IconButton.filledTonal(
+              tooltip: 'میټاډیټا',
+              onPressed: onMeta,
+              icon: const Icon(Icons.tune_rounded, size: 18),
+            ),
+          ],
+          const SizedBox(width: AppTokens.s8),
+          if (width >= 1180)
+            OutlinedButton.icon(
+              onPressed: () => s.backend.revealInFileManager(event.folderPath),
+              icon: const Icon(Icons.folder_open_rounded, size: 17),
+              label: const Text('فولډر پرانیزه'),
+            )
+          else
+            IconButton(
+              tooltip: 'فولډر پرانیزه',
+              onPressed: () => s.backend.revealInFileManager(event.folderPath),
+              icon: const Icon(Icons.folder_open_rounded, size: 18),
+            ),
           const SizedBox(width: AppTokens.s8),
           OutlinedButton.icon(
             onPressed: onPreview,
@@ -532,6 +607,91 @@ class _DropSlotState extends State<_DropSlot> {
 //  د ویجټونو پالېټ
 // ═══════════════════════════════════════════════════════════
 
+/// د یوه ویجټ تڼۍ — هم په پالېټ کې او هم په کشېدونکې پاڼه کې.
+class PaletteButton extends StatelessWidget {
+  const PaletteButton({super.key, required this.kind, required this.onTap});
+  final BlockKind kind;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final color = _Palette._colors[kind]!;
+    return HoverLift(
+      onTap: onTap,
+      lift: 2,
+      builder: (context, hovered) => AnimatedContainer(
+        duration: AppTokens.fast,
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppTokens.s12, vertical: 10),
+        decoration: BoxDecoration(
+          color: hovered
+              ? color.withValues(alpha: 0.10)
+              : cs.surfaceContainerLowest,
+          borderRadius: AppTokens.brMd,
+          border: Border.all(
+            color: hovered ? color.withValues(alpha: 0.5) : cs.outlineVariant,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(_Palette._icons[kind], size: 17, color: color),
+            const SizedBox(width: AppTokens.s12),
+            Expanded(
+              child: Text(kind.label,
+                  style: const TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis),
+            ),
+            AnimatedOpacity(
+              duration: AppTokens.fast,
+              opacity: hovered ? 1 : 0,
+              child: Icon(Icons.add_rounded, size: 14, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// د تنګو سکرینونو لپاره — ویجټونه په دوه کالمه ګریډ کې.
+class _PaletteGrid extends StatelessWidget {
+  const _PaletteGrid({required this.onAdd});
+  final ValueChanged<BlockKind> onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppTokens.s16, 0, AppTokens.s16, AppTokens.s16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionLabel('ویجټونه', icon: Icons.widgets_rounded),
+          LayoutBuilder(builder: (context, c) {
+            final cols = c.maxWidth > 520 ? 3 : 2;
+            const gap = AppTokens.s8;
+            final w = (c.maxWidth - gap * (cols - 1)) / cols;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final k in BlockKind.values)
+                  SizedBox(
+                    width: w,
+                    child: PaletteButton(kind: k, onTap: () => onAdd(k)),
+                  ),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
 class _Palette extends StatelessWidget {
   const _Palette({required this.onAdd});
   final void Function(BlockKind, {int? at}) onAdd;
@@ -574,44 +734,7 @@ class _Palette extends StatelessWidget {
           for (final k in BlockKind.values)
             Padding(
               padding: const EdgeInsets.only(bottom: AppTokens.s6),
-              child: HoverLift(
-                onTap: () => onAdd(k),
-                lift: 2,
-                builder: (context, hovered) => AnimatedContainer(
-                  duration: AppTokens.fast,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppTokens.s12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: hovered
-                        ? _colors[k]!.withValues(alpha: 0.10)
-                        : cs.surfaceContainerLowest,
-                    borderRadius: AppTokens.brMd,
-                    border: Border.all(
-                      color: hovered
-                          ? _colors[k]!.withValues(alpha: 0.5)
-                          : cs.outlineVariant,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(_icons[k], size: 17, color: _colors[k]),
-                      const SizedBox(width: AppTokens.s12),
-                      Expanded(
-                        child: Text(k.label,
-                            style: const TextStyle(
-                                fontSize: 12.5, fontWeight: FontWeight.w500),
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                      AnimatedOpacity(
-                        duration: AppTokens.fast,
-                        opacity: hovered ? 1 : 0,
-                        child: Icon(Icons.add_rounded,
-                            size: 14, color: _colors[k]),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              child: PaletteButton(kind: k, onTap: () => onAdd(k)),
             ),
           const SizedBox(height: AppTokens.s16),
           Container(

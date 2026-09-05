@@ -2,24 +2,29 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/date/pashto_calendar.dart';
+import '../../core/theme/tokens.dart';
 import '../models/models.dart';
 import '../models/query.dart';
 import '../platform/backend.dart';
 import '../platform/demo_backend.dart';
 
 /// د پروګرام هغه پاڼې چې سایډبار کې ښکاري.
+///
+/// هر یو خپل رنګ لري — نو سایډبار کې د آیکن کاشۍ رنګینه وي او
+/// کاروونکی یې په یوه نظر وپېژني.
 enum AppPage {
-  dashboard('ډاشبورډ', Icons.space_dashboard_rounded),
-  events('ټولې پیښې', Icons.auto_awesome_mosaic_rounded),
-  explorer('فایل اکسپلورر', Icons.folder_open_rounded),
-  keywords('د کیورډونو مدیریت', Icons.sell_rounded),
-  persons('د اشخاصو مدیریت', Icons.groups_rounded),
-  categories('د کټګوریو مدیریت', Icons.category_rounded),
-  settings('تنظیمات', Icons.settings_rounded);
+  dashboard('ډاشبورډ', Icons.space_dashboard_rounded, TileTone.blue),
+  events('پیښې', Icons.auto_awesome_mosaic_rounded, TileTone.orange),
+  explorer('اکسپلورر', Icons.folder_open_rounded, TileTone.green),
+  keywords('کلیدي کلمې', Icons.sell_rounded, TileTone.teal),
+  categories('کټګورۍ', Icons.category_rounded, TileTone.pink),
+  persons('اشخاص', Icons.groups_rounded, TileTone.purple),
+  settings('تنظیمات', Icons.settings_rounded, TileTone.slate);
 
-  const AppPage(this.title, this.icon);
+  const AppPage(this.title, this.icon, this.tone);
   final String title;
   final IconData icon;
+  final TileTone tone;
 }
 
 /// د پروګرام د حالت مرکز — UI له همدې لوستل کوي.
@@ -68,6 +73,9 @@ class AppState extends ChangeNotifier {
   bool loading = false;
 
   ScanProgress? scan;
+
+  /// د آرشیف د ډرایو ځای — د سایډبار د پای بار لپاره.
+  DiskSpace disk = DiskSpace.unknown;
 
   // ═══════════════════════════════════════════════════════
   //  پیل
@@ -145,6 +153,8 @@ class AppState extends ChangeNotifier {
     stats = await backend.stats();
     events = await backend.search(query);
     facets = await backend.facets(query);
+    final root = settings.archiveRoot;
+    if (root != null) disk = await backend.diskSpace(root);
     loading = false;
     notifyListeners();
   }

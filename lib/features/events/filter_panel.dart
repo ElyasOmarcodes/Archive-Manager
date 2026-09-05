@@ -14,7 +14,10 @@ import '../../widgets/tri_date_picker.dart';
 /// هره ډله ژوندۍ شمېرې ښیي، او د ډلو ترمنځ **AND** او د یوې ډلې دننه
 /// **OR** عمل کوي — دقیقاً هغه چلند چې مسلکي کاروونکي ورته عادت دي.
 class FilterPanel extends StatelessWidget {
-  const FilterPanel({super.key});
+  const FilterPanel({super.key, this.sheet = false});
+
+  /// کله چې په تنګ سکرین کې د کشېدونکې پاڼې دننه ښکاري.
+  final bool sheet;
 
   static const double width = 288;
 
@@ -26,10 +29,12 @@ class FilterPanel extends StatelessWidget {
     final f = s.facets;
 
     return Container(
-      width: width,
+      width: sheet ? null : width,
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        border: Border(left: BorderSide(color: cs.outlineVariant)),
+        color: sheet ? null : cs.surfaceContainerLow,
+        border: sheet
+            ? null
+            : Border(left: BorderSide(color: cs.outlineVariant)),
       ),
       child: Column(
         children: [

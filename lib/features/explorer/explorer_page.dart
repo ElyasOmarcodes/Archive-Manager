@@ -401,7 +401,10 @@ class _ExplorerPageState extends State<ExplorerPage> {
         color: cs.surfaceContainerLow,
         border: Border(bottom: BorderSide(color: cs.outlineVariant)),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: AppTokens.s4,
+        runSpacing: AppTokens.s8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // New +
           PopupMenuButton<String>(
@@ -451,7 +454,6 @@ class _ExplorerPageState extends State<ExplorerPage> {
               ),
             ),
           ),
-          const SizedBox(width: AppTokens.s12),
           _sep(cs),
 
           _tool(context, Icons.content_copy_rounded, 'کاپي (Ctrl+C)',
@@ -490,15 +492,12 @@ class _ExplorerPageState extends State<ExplorerPage> {
                 context, Icons.checklist_rounded, 'ټاکنه', hasArrow: true),
           ),
 
-          const Spacer(),
-
           SearchBox(
             controller: _searchCtl,
-            width: 220,
+            width: 200,
             hint: 'په دې فولډر کې ولټوه…',
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(width: AppTokens.s12),
 
           // Sort
           PopupMenuButton<ExplorerSort>(
@@ -532,7 +531,6 @@ class _ExplorerPageState extends State<ExplorerPage> {
             child: _toolBox(context, Icons.sort_rounded, _sort.label,
                 hasArrow: true),
           ),
-          const SizedBox(width: AppTokens.s8),
 
           // View
           Container(
@@ -572,7 +570,6 @@ class _ExplorerPageState extends State<ExplorerPage> {
               ],
             ),
           ),
-          const SizedBox(width: AppTokens.s8),
           _tool(context, Icons.account_tree_rounded, 'د فولډرونو ونه',
               () => setState(() => _showTree = !_showTree),
               active: _showTree),
@@ -652,7 +649,7 @@ class _ExplorerPageState extends State<ExplorerPage> {
           _tool(context, Icons.arrow_upward_rounded, 'پورتنی فولډر', _goUp),
           _tool(context, Icons.refresh_rounded, 'تازه کړه (F5)',
               () => _open(_path, push: false)),
-          const SizedBox(width: AppTokens.s8),
+          const SizedBox(width: AppTokens.s4),
 
           // د مسیر بریډکرمبونه
           Expanded(
@@ -839,12 +836,12 @@ class _ExplorerPageState extends State<ExplorerPage> {
         color: cs.surfaceContainerLow,
         border: Border(bottom: BorderSide(color: cs.outlineVariant)),
       ),
-      child: Row(children: [
+      child: LayoutBuilder(builder: (context, c) => Row(children: [
         h('نوم', ExplorerSort.name, flex: 4),
-        h('د بدلون نېټه', ExplorerSort.modified, flex: 2),
-        h('ډول', ExplorerSort.type),
+        if (c.maxWidth > 620) h('د بدلون نېټه', ExplorerSort.modified, flex: 2),
+        if (c.maxWidth > 480) h('ډول', ExplorerSort.type),
         h('اندازه', ExplorerSort.size),
-      ]),
+      ])),
     );
   }
 
@@ -1169,40 +1166,48 @@ class _EntryTileState extends State<_EntryTile> {
       );
     }
 
-    return Row(
-      children: [
-        Expanded(
-          flex: 4,
-          child: Row(
-            children: [
-              FileThumb(entry: e, size: 20, color: color),
-              const SizedBox(width: AppTokens.s8),
-              Expanded(
-                child: Text(e.name,
-                    style: const TextStyle(fontSize: 12),
-                    overflow: TextOverflow.ellipsis),
+    // کالمونه د سرلیک سره یو شان پټیږي، نو کرښې تل سمې لیکه شوې وي.
+    return LayoutBuilder(builder: (context, c) {
+      return Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Row(
+              children: [
+                FileThumb(entry: e, size: 20, color: color),
+                const SizedBox(width: AppTokens.s8),
+                Expanded(
+                  child: Text(e.name,
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+          ),
+          if (c.maxWidth > 620)
+            Expanded(
+              flex: 2,
+              child: Text(date,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+            ),
+          if (c.maxWidth > 480)
+            Expanded(
+              child: Text(
+                e.isDirectory ? 'فولډر' : (e.extension.toUpperCase()),
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
               ),
-            ],
+            ),
+          Expanded(
+            child: Text(
+              e.isDirectory ? '—' : humanBytes(e.sizeBytes),
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+            ),
           ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Text(date,
-              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
-        ),
-        Expanded(
-          child: Text(
-            e.isDirectory ? 'فولډر' : (e.extension.toUpperCase()),
-            style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            e.isDirectory ? '—' : humanBytes(e.sizeBytes),
-            style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
-          ),
-        ),
-      ],
-    );
+        ],
+      );
+    });
   }
 }

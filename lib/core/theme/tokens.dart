@@ -39,6 +39,32 @@ class AppTokens {
   static const Color violet = Color(0xFF9B5CF6);
   static const Color orange = Color(0xFFFF7A45);
 
+  // ── د نرمو آیکن کاشیو رنګونه (سایډبار) ────────────────
+  //
+  // هر توکی یو نرم پس‌منظر او یو ډک رنګ لري. په تیاره تیم کې
+  // پس‌منظر د ډک رنګ یوه کمزورې بڼه ده، نو د تور پر سر هم ښکلی وي.
+  static const Map<TileTone, Color> tileInk = {
+    TileTone.blue: Color(0xFF4F7DF3),
+    TileTone.amber: Color(0xFFF5A524),
+    TileTone.orange: Color(0xFFF97B3D),
+    TileTone.green: Color(0xFF2BB673),
+    TileTone.teal: Color(0xFF14B8A6),
+    TileTone.pink: Color(0xFFF2568F),
+    TileTone.purple: Color(0xFF8B5CF6),
+    TileTone.slate: Color(0xFF8A94A6),
+  };
+
+  static const Map<TileTone, Color> tileBgLight = {
+    TileTone.blue: Color(0xFFE8EFFE),
+    TileTone.amber: Color(0xFFFEF3E2),
+    TileTone.orange: Color(0xFFFDEBE0),
+    TileTone.green: Color(0xFFE4F7EC),
+    TileTone.teal: Color(0xFFE0F5F2),
+    TileTone.pink: Color(0xFFFDE7EF),
+    TileTone.purple: Color(0xFFEFE8FD),
+    TileTone.slate: Color(0xFFEEF0F3),
+  };
+
   /// د کارتونو رنګین ګرادیانتونه — د ډاشبورډ لپاره.
   static const List<List<Color>> cardGradients = [
     [Color(0xFF4F6BED), Color(0xFF7C5CFF)],
@@ -49,6 +75,9 @@ class AppTokens {
     [Color(0xFF2BB673), Color(0xFF12B5A5)],
   ];
 }
+
+/// د سایډبار د آیکن کاشیو رنګ.
+enum TileTone { blue, amber, orange, green, teal, pink, purple, slate }
 
 /// د میټاډیټا رنګ‌ټګونه — د Adobe Bridge د Label سیسټم په څېر.
 enum ColorTag {

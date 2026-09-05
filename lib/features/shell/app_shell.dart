@@ -24,9 +24,26 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
 
+    return LayoutBuilder(builder: (context, c) {
+      // په تنګو کړکیو کې سایډبار پخپله راټولیږي — نو د محتوا لپاره
+      // ځای پاتې کیږي او هیڅ برخه بهر نه لویږي.
+      final narrow = c.maxWidth < 1000;
+      return _buildShell(context, s, forceCollapsed: narrow);
+    });
+  }
+
+  Widget _buildShell(BuildContext context, AppState s,
+      {required bool forceCollapsed}) {
     return Scaffold(
+      // پروګرام پښتو (RTL) دی، نو سایډبار ښي طرف ته وي — همدا د
+      // ښي‌څخه‌کیڼ لوستلو طبیعي لور دی. په RTL کې د Row لومړی اولاد
+      // ښي لور ته ځي.
       body: Row(
         children: [
+          AppSidebar(
+            onNewEvent: () => showNewEventDialog(context),
+            forceCollapsed: forceCollapsed,
+          ),
           Expanded(
             child: Column(
               children: [
@@ -51,7 +68,6 @@ class AppShell extends StatelessWidget {
               ],
             ),
           ),
-          AppSidebar(onNewEvent: () => showNewEventDialog(context)),
         ],
       ),
     );
@@ -101,17 +117,22 @@ class _TopBarState extends State<_TopBar> {
 
     return Container(
       height: 62,
-      padding: const EdgeInsets.symmetric(horizontal: AppTokens.s20),
+      padding: const EdgeInsets.symmetric(horizontal: AppTokens.s16),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         border: Border(bottom: BorderSide(color: cs.outlineVariant)),
       ),
-      child: Row(
+      child: LayoutBuilder(builder: (context, c) {
+        // د لټون بکس د پاتې ځای مطابق کوچنی کیږي، خو له ۱۶۰px نه
+        // ښکته نه ځي — نو په هیڅ کچه کې بهر نه لویږي.
+        final reserved = 150 + (s.isDemo ? 120 : 0) + (s.scan != null ? 190 : 0);
+        final searchW = (c.maxWidth - reserved).clamp(160.0, 380.0);
+        return Row(
         children: [
           // ټول‌ځایي لټون — هر ځای کې کار کوي
           SearchBox(
             controller: _search,
-            width: 340,
+            width: searchW,
             hint: 'په ټول آرشیف کې ولټوه…  (کیورډ، شخصیت، متن)',
             onSubmitted: (v) {
               s.go(AppPage.events);
@@ -123,10 +144,11 @@ class _TopBarState extends State<_TopBar> {
               }
             },
           ),
-          const SizedBox(width: AppTokens.s16),
-          if (s.scan != null) _ScanIndicator(progress: s.scan!),
+          const SizedBox(width: AppTokens.s12),
+          if (s.scan != null)
+            Flexible(child: _ScanIndicator(progress: s.scan!)),
           const Spacer(),
-          if (s.isDemo) const _DemoBadge(),
+          if (s.isDemo && c.maxWidth > 720) const _DemoBadge(),
           const SizedBox(width: AppTokens.s8),
           IconButton(
             tooltip: 'آرشیف بیا سکن کړه',
@@ -135,7 +157,8 @@ class _TopBarState extends State<_TopBar> {
           ),
           const _ThemeToggle(),
         ],
-      ),
+        );
+      }),
     );
   }
 }

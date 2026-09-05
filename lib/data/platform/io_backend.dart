@@ -82,6 +82,61 @@ class IoBackend implements ArchiveBackend {
     }
   }
 
+  /// **د ډرایو د ځای موندنه** — هر پلیټ‌فارم خپله لار لري.
+  ///
+  /// Dart دې لپاره جوړ API نه لري، نو د سیسټم خپل کمانډ کاروو.
+  /// که هر څه ناکام شي، `unknown` راګرځي او UI یوازې دا برخه پټوي —
+  /// پروګرام نه ودریږي.
+  @override
+  Future<DiskSpace> diskSpace(String path) async {
+    if (path.trim().isEmpty) return DiskSpace.unknown;
+    try {
+      if (Platform.isWindows) return await _windowsDiskSpace(path);
+      return await _posixDiskSpace(path);
+    } catch (_) {
+      return DiskSpace.unknown;
+    }
+  }
+
+  static Future<DiskSpace> _windowsDiskSpace(String path) async {
+    // د ډرایو توری: `E:\Arvitch\…` → `E:`
+    final drive = p.rootPrefix(path).replaceAll(RegExp(r'[\\/]'), '');
+    if (drive.isEmpty) return DiskSpace.unknown;
+
+    final r = await Process.run('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      "\$d = Get-PSDrive -Name '${drive.replaceAll(':', '')}' "
+          '-ErrorAction Stop; '
+          "Write-Output (\"\$(\$d.Used) \$(\$d.Free)\")",
+    ]);
+    if (r.exitCode != 0) return DiskSpace.unknown;
+
+    final parts = '${r.stdout}'.trim().split(RegExp(r'\s+'));
+    if (parts.length < 2) return DiskSpace.unknown;
+    final used = int.tryParse(parts[0]) ?? 0;
+    final free = int.tryParse(parts[1]) ?? 0;
+    if (used + free <= 0) return DiskSpace.unknown;
+    return DiskSpace(totalBytes: used + free, freeBytes: free);
+  }
+
+  static Future<DiskSpace> _posixDiskSpace(String path) async {
+    // `df -k <path>` → د ۱K بلاکونو په واحد
+    final r = await Process.run('df', ['-k', path]);
+    if (r.exitCode != 0) return DiskSpace.unknown;
+
+    final lines = '${r.stdout}'.trim().split('\n');
+    if (lines.length < 2) return DiskSpace.unknown;
+    final cols = lines.last.trim().split(RegExp(r'\s+'));
+    if (cols.length < 4) return DiskSpace.unknown;
+
+    final total = (int.tryParse(cols[1]) ?? 0) * 1024;
+    final free = (int.tryParse(cols[3]) ?? 0) * 1024;
+    if (total <= 0) return DiskSpace.unknown;
+    return DiskSpace(totalBytes: total, freeBytes: free);
+  }
+
   @override
   Future<String?> pickDirectory({String? initial}) =>
       FilePicker.getDirectoryPath(

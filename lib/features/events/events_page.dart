@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+
 import '../../core/date/pashto_calendar.dart';
 import '../../core/theme/tokens.dart';
 import '../../data/models/query.dart';
@@ -34,13 +35,39 @@ class _EventsPageState extends State<EventsPage> {
     super.dispose();
   }
 
+  /// د تنګو سکرینونو لپاره — فلټرونه د یوې کشېدونکې پاڼې دننه.
+  void _openFilterSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: FractionallySizedBox(
+          heightFactor: 0.88,
+          child: ChangeNotifierProvider<AppState>.value(
+            value: context.read<AppState>(),
+            child: const FilterPanel(sheet: true),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
 
-    return Row(
+    return LayoutBuilder(builder: (context, c) {
+      // د فلټر پینل ~۲۹۰px نیسي؛ که ورسته له هغه د ګریډ لپاره
+      // بس ځای پاتې نه شي، پینل پخپله پټیږي.
+      final canShowFilters = c.maxWidth >= 900;
+      final showFilters = _showFilters && canShowFilters;
+      return Row(
       children: [
+        // په RTL کې لومړی اولاد ښي ته ځي — نو فلټر پینل وروستی
+        // (چپ طرف) وي، لکه څنګه چې غوښتل شوی و.
         Expanded(
           child: Column(
             children: [
@@ -66,9 +93,19 @@ class _EventsPageState extends State<EventsPage> {
                       ],
                     ),
                     const SizedBox(height: AppTokens.s16),
-                    Row(
+                    // په تنګو کچو کې وسیلې ښکته کرښې ته ځي، نه چې
+                    // یو له بل سره ونښلي یا بهر ولویږي.
+                    Wrap(
+                      spacing: AppTokens.s8,
+                      runSpacing: AppTokens.s8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Expanded(
+                        SizedBox(
+                          width: (c.maxWidth -
+                                  (showFilters ? FilterPanel.width : 0) -
+                                  AppTokens.s24 * 2 -
+                                  260)
+                              .clamp(180.0, 620.0),
                           child: SearchBox(
                             controller: _search,
                             hint: 'د پیښې نوم، متن، کیورډ یا شخصیت…',
@@ -76,24 +113,36 @@ class _EventsPageState extends State<EventsPage> {
                                 s.setQuery(s.query.copyWith(text: v)),
                           ),
                         ),
-                        const SizedBox(width: AppTokens.s12),
                         _SortMenu(),
-                        const SizedBox(width: AppTokens.s8),
                         _GridSizeToggle(),
-                        const SizedBox(width: AppTokens.s8),
-                        IconButton.filledTonal(
-                          tooltip: _showFilters
-                              ? 'فلټرونه پټ کړه'
-                              : 'فلټرونه وښیه',
-                          onPressed: () =>
-                              setState(() => _showFilters = !_showFilters),
-                          icon: Icon(
-                            _showFilters
-                                ? Icons.filter_alt_off_rounded
-                                : Icons.filter_alt_rounded,
-                            size: 19,
+                        if (canShowFilters)
+                          IconButton.filledTonal(
+                            tooltip: showFilters
+                                ? 'فلټرونه پټ کړه'
+                                : 'فلټرونه وښیه',
+                            onPressed: () =>
+                                setState(() => _showFilters = !_showFilters),
+                            icon: Icon(
+                              showFilters
+                                  ? Icons.filter_alt_off_rounded
+                                  : Icons.filter_alt_rounded,
+                              size: 19,
+                            ),
+                          )
+                        else
+                          // په تنګو کچو کې پینل نه ځاییږي، نو فلټرونه
+                          // د یوې کشېدونکې پاڼې له لارې ښکاري.
+                          IconButton.filledTonal(
+                            tooltip: 'فلټرونه',
+                            onPressed: () => _openFilterSheet(context),
+                            icon: Badge(
+                              isLabelVisible: s.query.activeFilterCount > 0,
+                              label: Text(PashtoDigits.to(
+                                  s.query.activeFilterCount)),
+                              child: const Icon(Icons.filter_alt_rounded,
+                                  size: 19),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                     if (s.query.hasAnyFilter) ...[
@@ -146,12 +195,13 @@ class _EventsPageState extends State<EventsPage> {
         AnimatedSize(
           duration: AppTokens.base,
           curve: AppTokens.emphasized,
-          child: _showFilters
+          child: showFilters
               ? const FilterPanel()
               : const SizedBox(width: 0, height: double.infinity),
         ),
       ],
-    );
+      );
+    });
   }
 }
 

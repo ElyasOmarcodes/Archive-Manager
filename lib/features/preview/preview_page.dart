@@ -36,32 +36,58 @@ class PreviewPage extends StatelessWidget {
             color: cs.surfaceContainerLow,
             border: Border(bottom: BorderSide(color: cs.outlineVariant)),
           ),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'بېرته ایډیټر ته',
-                icon: const Icon(Icons.arrow_forward_rounded, size: 20),
-                onPressed: onBack,
-              ),
-              const SizedBox(width: AppTokens.s8),
-              Icon(Icons.visibility_rounded, size: 17, color: cs.primary),
-              const SizedBox(width: 6),
-              const Text(
-                'پریویو',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              const Spacer(),
-              // ── د دوه‌ګوني پرانیستلو تڼۍ ──
-              _OpenWithButton(folder: event.folderPath),
-              const SizedBox(width: AppTokens.s8),
-              OutlinedButton.icon(
-                onPressed: () => s.backend.openExternally(
-                  p.join(event.folderPath, 'index.html'),
-                ),
-                icon: const Icon(Icons.open_in_browser_rounded, size: 17),
-                label: const Text('په براوزر کې'),
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, c) {
+              // په تنګو کچو کې د متن لرونکې تڼۍ آیکن ته اوړي، نو بار
+              // هیڅکله بهر نه لویږي.
+              // ~۵۱۰px د بشپړو تڼیو لپاره پکار دي؛ لږ ډېر ځای پرېږدو.
+              final wide = c.maxWidth >= 660;
+              return Row(
+                children: [
+                  IconButton(
+                    tooltip: 'بېرته ایډیټر ته',
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                    onPressed: onBack,
+                  ),
+                  const SizedBox(width: AppTokens.s4),
+                  Icon(Icons.visibility_rounded, size: 17, color: cs.primary),
+                  if (wide) ...[
+                    const SizedBox(width: 6),
+                    const Text(
+                      'پریویو',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  // ── د دوه‌ګوني پرانیستلو تڼۍ ──
+                  //
+                  // دلته `Flexible` نه کاروو: هغه به د `Spacer` سره د
+                  // پاتې ځای پر سر سیالي کوله او تڼۍ به یې راتنګوله.
+                  // پرځای یې د `wide` له مخې بڼه بدلوو.
+                  _OpenWithButton(folder: event.folderPath, compact: !wide),
+                  const SizedBox(width: AppTokens.s8),
+                  if (wide)
+                    OutlinedButton.icon(
+                      onPressed: () => s.backend.openExternally(
+                        p.join(event.folderPath, 'index.html'),
+                      ),
+                      icon: const Icon(Icons.open_in_browser_rounded, size: 17),
+                      label: const Text('په براوزر کې'),
+                    )
+                  else
+                    IconButton(
+                      tooltip: 'په براوزر کې پرانیزه',
+                      onPressed: () => s.backend.openExternally(
+                        p.join(event.folderPath, 'index.html'),
+                      ),
+                      icon: const Icon(Icons.open_in_browser_rounded, size: 19),
+                    ),
+                ],
+              );
+            },
           ),
         ),
 
@@ -104,8 +130,9 @@ class PreviewPage extends StatelessWidget {
 
 /// د پروژې مسیر د وینډوز یا داخلي اکسپلورر کې پرانیزي.
 class _OpenWithButton extends StatelessWidget {
-  const _OpenWithButton({required this.folder});
+  const _OpenWithButton({required this.folder, this.compact = false});
   final String folder;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -120,34 +147,64 @@ class _OpenWithButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextButton.icon(
-            onPressed: () => s.backend.revealInFileManager(folder),
-            icon: const Icon(Icons.desktop_windows_rounded, size: 16),
-            label: const Text('وینډوز', style: TextStyle(fontSize: 12)),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.horizontal(
-                  right: Radius.circular(AppTokens.rMd),
-                ),
-              ),
+          _half(
+            context,
+            icon: Icons.desktop_windows_rounded,
+            label: 'وینډوز',
+            tooltip: 'په وینډوز اکسپلورر کې وښیه',
+            onTap: () => s.backend.revealInFileManager(folder),
+            radius: const BorderRadius.horizontal(
+              right: Radius.circular(AppTokens.rMd),
             ),
           ),
           Container(width: 1, height: 22, color: cs.outlineVariant),
-          TextButton.icon(
-            onPressed: () => s.openInExplorer(folder),
-            icon: const Icon(Icons.folder_open_rounded, size: 16),
-            label: const Text('داخلي', style: TextStyle(fontSize: 12)),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.horizontal(
-                  left: Radius.circular(AppTokens.rMd),
-                ),
-              ),
+          _half(
+            context,
+            icon: Icons.folder_open_rounded,
+            label: 'داخلي',
+            tooltip: 'په داخلي اکسپلورر کې وښیه',
+            onTap: () => s.openInExplorer(folder),
+            radius: const BorderRadius.horizontal(
+              left: Radius.circular(AppTokens.rMd),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+extension on _OpenWithButton {
+  Widget _half(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String tooltip,
+    required VoidCallback onTap,
+    required BorderRadius radius,
+  }) {
+    final shape = RoundedRectangleBorder(borderRadius: radius);
+    if (compact) {
+      return Tooltip(
+        message: tooltip,
+        child: TextButton(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            minimumSize: const Size(0, 38),
+            shape: shape,
+          ),
+          child: Icon(icon, size: 17),
+        ),
+      );
+    }
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 16),
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        shape: shape,
       ),
     );
   }

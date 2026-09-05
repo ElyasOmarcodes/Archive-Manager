@@ -33,6 +33,27 @@ class FsEntry {
   }
 }
 
+/// د یوه ډرایو د ځای حالت — د سایډبار د پای بار لپاره.
+///
+/// د ۵TB بهرني هارډ لپاره دا مهم دی: کاروونکی باید وویني چې څومره
+/// ځای پاتې دی، مخکې تر دې چې ډرایو ډک شي.
+class DiskSpace {
+  const DiskSpace({required this.totalBytes, required this.freeBytes});
+
+  final int totalBytes;
+  final int freeBytes;
+
+  int get usedBytes => totalBytes - freeBytes;
+
+  /// ۰٫۰ … ۱٫۰
+  double get usedRatio =>
+      totalBytes <= 0 ? 0 : (usedBytes / totalBytes).clamp(0.0, 1.0);
+
+  bool get isValid => totalBytes > 0;
+
+  static const unknown = DiskSpace(totalBytes: 0, freeBytes: 0);
+}
+
 /// د سکن پرمختګ راپور.
 class ScanProgress {
   const ScanProgress({
@@ -102,6 +123,9 @@ abstract class ArchiveBackend {
   // ── د آرشیف ریښه ────────────────────────────────────────
   /// آیا دا مسیر شته او لوستل کیږي؟
   Future<bool> pathExists(String path);
+
+  /// د دې مسیر د ډرایو ټول/پاتې ځای. که معلوم نه شي، `DiskSpace.unknown`.
+  Future<DiskSpace> diskSpace(String path);
 
   /// د کاروونکي څخه د فولډر غوښتنه (native picker).
   Future<String?> pickDirectory({String? initial});
