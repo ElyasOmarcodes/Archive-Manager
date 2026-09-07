@@ -22,8 +22,8 @@ permissions:
 env:
   FLUTTER_VERSION: '3.47.2'
   APP_NAME: 'ArchiveManager'
-  APP_VERSION: '1.1.0'
-  RELEASE_TAG: 'v1.1.0'
+  APP_VERSION: '1.2.0'
+  RELEASE_TAG: 'v1.2.0'
 
 jobs:
   # ═══════════════════════════════════════════════════════════
@@ -259,6 +259,19 @@ jobs:
 
             [`docs/sample/Arvitch-Sample-Archive.tar.xz`](https://github.com/${{ github.repository }}/raw/${{ github.sha }}/docs/sample/Arvitch-Sample-Archive.tar.xz)
             · ۱.۸ MB (راوتلی: ۲۱۷ MB)
+
+            ### په دې نسخه کې نوي (v1.2.0)
+
+            * **د مک په څېر ټایټل بار** — د وینډوز اصلي بار او
+              تڼۍ لرې شوې
+            * **PDF ته اکسپورټ** — د ښودنې پاڼې کې؛ اصلي
+              `metadata.json` د PDF دننه ریښتینې ضمیمه ده
+            * **د پروګرام د اندازې تنظیم** — نو پر پرده کې زیات
+              شیان ځای ونیسي
+            * تنظیمات اوس د ډاشبورډ په څېر څنګ‌په‌څنګ پنلونه دي
+            * د سکرول بار په موس کش کیږي · د ټولو ساحو لوړوالی
+              یو شان · د ټولې شوې ډلې حالت نه ورکیږي
+            * د ډرایو دایروي پروګرس سم سلنه ښیي
 
             ### سیسټم
 
