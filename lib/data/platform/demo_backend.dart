@@ -245,6 +245,10 @@ class DemoBackend implements ArchiveBackend {
   @override
   Future<List<int>?> readBytes(String path) async => null;
 
+  /// ویب کې فایل سیسټم نشته.
+  @override
+  Future<String?> writeBytes(String path, List<int> bytes) async => null;
+
   // ═══════════════════════════════════════════════════════
   //  نمونه ډیټا
   // ═══════════════════════════════════════════════════════

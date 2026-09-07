@@ -1,4 +1,5 @@
 import 'dart:io' show File;
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../core/theme/tokens.dart';
 import '../../data/models/models.dart';
 import '../../data/repository/app_state.dart';
 import '../../widgets/common.dart';
+import 'pdf_export.dart';
 
 /// **د پیښې د پریویو پاڼه.**
 ///
@@ -48,11 +50,11 @@ class PreviewPage extends StatelessWidget {
             builder: (context, c) {
               // په تنګو کچو کې د متن لرونکې تڼۍ آیکن ته اوړي، نو بار
               // هیڅکله بهر نه لویږي.
-              // ~۵۱۰px د بشپړو تڼیو لپاره پکار دي؛ لږ ډېر ځای پرېږدو.
-              // د «ایډیټ» تڼۍ زیاتېدو سره ټولبار ~۴۰px پسې اوږد شو،
-              // نو د بشپړو لیبلونو پوله لوړه شوه — ګنې پر ۱۰۲۴px
-              // سکرین کې بهر لوېده.
-              final wide = c.maxWidth >= 780;
+              // د «ایډیټ» او بیا د «PDF» تڼیو زیاتېدو سره ټولبار
+              // پسې اوږد شو. د بشپړو لیبلونو سره اوس ~۹۰۵px غواړي،
+              // نو پوله همدې ته پورته کوو — ګنې پر ۹۰۰×۶۰۰ کړکۍ کې
+              // بهر لوېږي (په ازموینه کې ۷۵px).
+              final wide = c.maxWidth >= 910;
               return Row(
                 children: [
                   IconButton(
@@ -78,6 +80,10 @@ class PreviewPage extends StatelessWidget {
                   // دلته `Flexible` نه کاروو: هغه به د `Spacer` سره د
                   // پاتې ځای پر سر سیالي کوله او تڼۍ به یې راتنګوله.
                   // پرځای یې د `wide` له مخې بڼه بدلوو.
+                  // ── PDF ته اکسپورټ ──
+                  _ExportPdfButton(event: event, compact: !wide),
+                  const SizedBox(width: AppTokens.s8),
+
                   // ── ایډیټ ──
                   if (onEdit != null) ...[
                     if (wide)
@@ -774,6 +780,100 @@ class _Footer extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// **د PDF اکسپورټ تڼۍ.**
+///
+/// دوسیه د پیښې فولډر دننه ساتل کیږي (`<نوم>.pdf`)، نو له نورو
+/// شواهدو سره یو ځای پاتې کیږي.
+class _ExportPdfButton extends StatefulWidget {
+  const _ExportPdfButton({required this.event, this.compact = false});
+
+  final EventMetadata event;
+  final bool compact;
+
+  @override
+  State<_ExportPdfButton> createState() => _ExportPdfButtonState();
+}
+
+class _ExportPdfButtonState extends State<_ExportPdfButton> {
+  bool _busy = false;
+
+  Future<void> _run() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+
+    final s = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      // انځورونه له ډیسکه راوړو — نو په PDF کې ریښتیا ښکاره شي.
+      // ویډیو/غږ نه راوړو: PDF یې نه چلوي، نو یوازې کارت ورکوو.
+      final images = <String, Uint8List>{};
+      for (final b in widget.event.blocks) {
+        if (b.kind != BlockKind.image || b.source.isEmpty) continue;
+        final bytes = await s.backend
+            .readBytes(p.join(widget.event.folderPath, b.source));
+        if (bytes != null) images[b.source] = Uint8List.fromList(bytes);
+      }
+
+      final pdf = await EventPdf.build(widget.event, images: images);
+      final name = '${_safeName(widget.event.title)}.pdf';
+      final saved = await s.backend
+          .writeBytes(p.join(widget.event.folderPath, name), pdf);
+
+      if (!mounted) return;
+      if (saved == null) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('په دې نسخه کې فایل ثبتول ناشوني دي')));
+      } else {
+        messenger.showSnackBar(SnackBar(
+          content: Text('PDF جوړ شو: $name'),
+          action: SnackBarAction(
+            label: 'پرانیزه',
+            onPressed: () => s.backend.openExternally(saved),
+          ),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('PDF جوړ نه شو: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// د فایل نوم کې ناروا کرکټرونه لرې کوي.
+  static String _safeName(String s) {
+    var v = s.trim().replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), ' ');
+    v = v.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (v.isEmpty) v = 'پیښه';
+    return v.length > 100 ? v.substring(0, 100) : v;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = _busy
+        ? const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2))
+        : const Icon(Icons.picture_as_pdf_rounded, size: 17);
+
+    if (widget.compact) {
+      return IconButton(
+        tooltip: 'PDF ته وباسه',
+        onPressed: _busy ? null : _run,
+        icon: icon,
+      );
+    }
+    return OutlinedButton.icon(
+      onPressed: _busy ? null : _run,
+      icon: icon,
+      label: Text(_busy ? 'جوړیږي…' : 'PDF'),
     );
   }
 }

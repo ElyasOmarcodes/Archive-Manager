@@ -205,6 +205,12 @@ abstract class ArchiveBackend {
 
   /// د یوه فایل بایټونه — د انځور د پریویو لپاره.
   Future<List<int>?> readBytes(String path);
+
+  /// بایټونه یوې لارې ته لیکي او هغه لار راګرځوي.
+  ///
+  /// د PDF اکسپورټ یې کاروي. په ویب کې کار نه کوي (فایل سیسټم
+  /// نشته)، نو `null` راګرځوي.
+  Future<String?> writeBytes(String path, List<int> bytes);
 }
 
 // ═══════════════════════════════════════════════════════════

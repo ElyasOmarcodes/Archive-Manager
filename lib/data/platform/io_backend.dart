@@ -678,6 +678,18 @@ class IoBackend implements ArchiveBackend {
     final f = File(path);
     return await f.exists() ? f.readAsBytes() : null;
   }
+  @override
+  Future<String?> writeBytes(String path, List<int> bytes) async {
+    try {
+      final f = File(path);
+      await f.parent.create(recursive: true);
+      await f.writeAsBytes(bytes, flush: true);
+      return f.path;
+    } catch (_) {
+      return null;
+    }
+  }
+
 }
 
 // ═══════════════════════════════════════════════════════════
