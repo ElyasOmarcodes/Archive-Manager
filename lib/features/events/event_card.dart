@@ -27,6 +27,11 @@ class EventCard extends StatelessWidget {
     final media = event.mediaBreakdown;
 
     return AppCard(
+      // د کارت پورتنی رنګ = د کاروونکي خپل «رنګ ټګ». معنا یې د
+      // ماوس پر تېرېدو ښکاري.
+      accentTooltip: event.colorTag == ColorTag.none
+          ? null
+          : '${event.colorTag.label} — ${event.colorTag.meaning}',
       accent: event.colorTag == ColorTag.none ? null : event.colorTag.color,
       padding: const EdgeInsets.all(AppTokens.s16),
       onTap: onOpen ?? () => s.openEditor(event, preview: true),

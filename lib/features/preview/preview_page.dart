@@ -462,7 +462,8 @@ class _BlockView extends StatelessWidget {
             ),
           ),
         ),
-        BlockKind.paragraph => Text(
+        // لینکونه پخپله پېژندل کیږي او کلیک‌کېدونکي دي.
+        BlockKind.paragraph => LinkedText(
           block.text,
           textAlign: TextAlign.right,
           style: t.textTheme.bodyLarge?.copyWith(height: 1.9),
@@ -499,7 +500,7 @@ class _BlockView extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  LinkedText(
                     block.text,
                     style: t.textTheme.titleMedium?.copyWith(
                       height: 1.9,

@@ -93,35 +93,89 @@ class FilterPanel extends StatelessWidget {
               padding: const EdgeInsets.all(AppTokens.s16),
               itemCount: 7,
               itemBuilder: (context, i) {
+                // هره ډله د ټولېدو وړ ده. سرلیک یې د ټاکل شویو
+                // شمېره ښیي، نو د ټولې شوې ډلې حالت هم معلوم وي.
                 final group = switch (i) {
-                  0 => _RatingGroup(query: q, facets: f),
-                  1 => _ColorGroup(query: q, facets: f),
-                  2 => _DateGroup(query: q),
-                  3 => _TermGroup(
+                  0 => CollapsibleSection(
+                      title: 'درجه (ستوري)',
+                      icon: Icons.star_rounded,
+                      badge: _badge(q.ratings.length),
+                      trailing: _clear(q.ratings.isNotEmpty,
+                          () => s.setQuery(q.copyWith(ratings: <int>{}))),
+                      child: _RatingGroup(query: q, facets: f),
+                    ),
+                  1 => CollapsibleSection(
+                      title: 'رنګ ټګ',
+                      icon: Icons.palette_rounded,
+                      badge: _badge(q.colors.length),
+                      trailing: _clear(q.colors.isNotEmpty,
+                          () => s.setQuery(q.copyWith(colors: <ColorTag>{}))),
+                      child: _ColorGroup(query: q, facets: f),
+                    ),
+                  2 => CollapsibleSection(
+                      title: 'د پیښې تاریخ',
+                      icon: Icons.event_rounded,
+                      trailing: _clear(
+                          q.fromJdn != null || q.toJdn != null,
+                          () => s.setQuery(
+                              q.copyWith(fromJdn: null, toJdn: null))),
+                      child: _DateGroup(query: q),
+                    ),
+                  3 => CollapsibleSection(
                       title: 'کټګورۍ',
                       icon: Icons.category_rounded,
-                      counts: f.categories,
-                      selected: q.categories,
-                      onChanged: (v) => s.setQuery(q.copyWith(categories: v)),
+                      badge: _badge(q.categories.length),
+                      trailing: _clear(q.categories.isNotEmpty,
+                          () => s.setQuery(q.copyWith(categories: <String>{}))),
+                      child: _TermGroup(
+                        title: 'کټګورۍ',
+                        icon: Icons.category_rounded,
+                        counts: f.categories,
+                        selected: q.categories,
+                        onChanged: (v) => s.setQuery(q.copyWith(categories: v)),
+                      ),
                     ),
-                  4 => _TermGroup(
+                  4 => CollapsibleSection(
                       title: 'کیورډونه',
                       icon: Icons.sell_rounded,
-                      counts: f.keywords,
-                      selected: q.keywords,
-                      onChanged: (v) => s.setQuery(q.copyWith(keywords: v)),
-                      searchable: true,
-                      prefix: '#',
+                      badge: _badge(q.keywords.length),
+                      trailing: _clear(q.keywords.isNotEmpty,
+                          () => s.setQuery(q.copyWith(keywords: <String>{}))),
+                      child: _TermGroup(
+                        title: 'کیورډونه',
+                        icon: Icons.sell_rounded,
+                        counts: f.keywords,
+                        selected: q.keywords,
+                        onChanged: (v) => s.setQuery(q.copyWith(keywords: v)),
+                        searchable: true,
+                        prefix: '#',
+                      ),
                     ),
-                  5 => _TermGroup(
+                  5 => CollapsibleSection(
                       title: 'شخصیتونه',
                       icon: Icons.groups_rounded,
-                      counts: f.persons,
-                      selected: q.persons,
-                      onChanged: (v) => s.setQuery(q.copyWith(persons: v)),
-                      searchable: true,
+                      badge: _badge(q.persons.length),
+                      trailing: _clear(q.persons.isNotEmpty,
+                          () => s.setQuery(q.copyWith(persons: <String>{}))),
+                      child: _TermGroup(
+                        title: 'شخصیتونه',
+                        icon: Icons.groups_rounded,
+                        counts: f.persons,
+                        selected: q.persons,
+                        onChanged: (v) => s.setQuery(q.copyWith(persons: v)),
+                        searchable: true,
+                      ),
                     ),
-                  _ => _MediaGroup(query: q, facets: f),
+                  _ => CollapsibleSection(
+                      title: 'د فایلونو ډول',
+                      icon: Icons.perm_media_rounded,
+                      badge: _badge(q.mediaKinds.length),
+                      trailing: _clear(
+                          q.mediaKinds.isNotEmpty,
+                          () => s.setQuery(
+                              q.copyWith(mediaKinds: <MediaKind>{}))),
+                      child: _MediaGroup(query: q, facets: f),
+                    ),
                 };
                 return Padding(
                   padding: EdgeInsets.only(bottom: i == 6 ? AppTokens.s40 : 0),
@@ -165,7 +219,6 @@ class _RatingGroup extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionLabel('درجه (ستوري)', icon: Icons.star_rounded),
         for (var r = 5; r >= 0; r--)
           _Row(
             selected: query.ratings.contains(r),
@@ -208,7 +261,6 @@ class _ColorGroup extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionLabel('رنګ ټګ', icon: Icons.palette_rounded),
         Wrap(
           spacing: AppTokens.s6,
           runSpacing: AppTokens.s6,
@@ -249,7 +301,6 @@ class _MediaGroup extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionLabel('د فایلونو ډول', icon: Icons.perm_media_rounded),
         for (final k in MediaKind.values)
           if ((facets.mediaKinds[k] ?? 0) > 0 || query.mediaKinds.contains(k))
             _Row(
@@ -284,24 +335,10 @@ class _DateGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
-    final cs = Theme.of(context).colorScheme;
-    final has = query.fromJdn != null || query.toJdn != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionLabel(
-          'د پیښې تاریخ',
-          icon: Icons.event_rounded,
-          trailing: has
-              ? InkWell(
-                  onTap: () => s.setQuery(
-                      query.copyWith(fromJdn: null, toJdn: null)),
-                  child: Icon(Icons.close_rounded,
-                      size: 14, color: cs.onSurfaceVariant),
-                )
-              : null,
-        ),
         // د تقویم ټاکنه — یوازې د ښودلو لپاره، پلټنه تل پر JDN ده.
         Row(
           children: [
@@ -520,17 +557,6 @@ class _TermGroupState extends State<_TermGroup> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionLabel(
-          widget.title,
-          icon: widget.icon,
-          trailing: widget.selected.isEmpty
-              ? null
-              : InkWell(
-                  onTap: () => widget.onChanged(<String>{}),
-                  child: Icon(Icons.close_rounded,
-                      size: 14, color: cs.onSurfaceVariant),
-                ),
-        ),
         if (widget.searchable && widget.counts.length > 6) ...[
           TextField(
             controller: _filter,
@@ -647,6 +673,35 @@ class _Row extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// د ټاکل شویو شمېره — که صفر وي، هیڅ نه ښیو.
+String? _badge(int n) => n == 0 ? null : PashtoDigits.to(n);
+
+/// د «پاک کړه» کوچنۍ تڼۍ — یوازې کله چې څه ټاکل شوي وي.
+Widget? _clear(bool show, VoidCallback onTap) => show
+    ? _ClearDot(onTap: onTap)
+    : null;
+
+class _ClearDot extends StatelessWidget {
+  const _ClearDot({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Tooltip(
+        message: 'پاک کړه',
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Icon(Icons.close_rounded, size: 14, color: cs.onSurfaceVariant),
         ),
       ),
     );

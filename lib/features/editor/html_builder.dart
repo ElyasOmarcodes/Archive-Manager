@@ -1,4 +1,5 @@
 import '../../core/date/pashto_calendar.dart';
+import '../../core/text/pashto_text.dart';
 import '../../data/models/models.dart';
 
 /// **د `index.html` جوړونکی.**
@@ -143,12 +144,12 @@ void _block(StringBuffer b, Block bl) {
       b.writeln('<h$lvl class="blk h$lvl reveal">${_esc(bl.text)}</h$lvl>');
 
     case BlockKind.paragraph:
-      b.writeln('<p class="blk para reveal">${_nl2br(_esc(bl.text))}</p>');
+      b.writeln('<p class="blk para reveal">${_linkedHtml(bl.text)}</p>');
 
     case BlockKind.quote:
       b.writeln('<blockquote class="blk quote reveal">');
       b.writeln('  <div class="quote-mark">”</div>');
-      b.writeln('  <p>${_nl2br(_esc(bl.text))}</p>');
+      b.writeln('  <p>${_linkedHtml(bl.text)}</p>');
       if (bl.author.isNotEmpty) {
         b.writeln('  <cite>— ${_esc(bl.author)}</cite>');
       }
@@ -563,3 +564,23 @@ String _esc(String s) => s
 
 /// د نوې کرښې نښې `<br>` ته اړوي (تر تېښتې وروسته).
 String _nl2br(String s) => s.replaceAll('\n', '<br>');
+
+/// **ساده متن → HTML، له اتوماتو لینکونو سره.**
+///
+/// هر څه لومړی تېښته کیږي (`_esc`) او بیا یوازې هغه برخې چې
+/// ریښتیا لینک دي په `<a>` کې تړل کیږي. نو د کاروونکي متن هیڅکله
+/// د HTML په توګه نه چلیږي — که څوک `<script>` ولیکي، لکه متن
+/// ښکاري. پته هم د `isSafeUrl` له خوا څېړل کیږي، نو
+/// `javascript:` هیڅکله نه ننوځي.
+String _linkedHtml(String text) {
+  final b = StringBuffer();
+  for (final c in linkify(text)) {
+    if (c.isLink && isSafeUrl(c.url!)) {
+      b.write('<a href="${_esc(c.url!)}" target="_blank" '
+          'rel="noopener noreferrer">${_nl2br(_esc(c.text))}</a>');
+    } else {
+      b.write(_nl2br(_esc(c.text)));
+    }
+  }
+  return b.toString();
+}

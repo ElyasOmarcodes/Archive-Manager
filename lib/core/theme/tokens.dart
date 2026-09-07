@@ -114,20 +114,33 @@ class AppTokens {
 enum TileTone { blue, amber, orange, green, teal, pink, purple, slate }
 
 /// د میټاډیټا رنګ‌ټګونه — د Adobe Bridge د Label سیسټم په څېر.
+/// **د رنګ ټګ — د پیښې د حالت ګړندۍ نښه.**
+///
+/// دا هماغه څه دي چې Adobe Bridge ورته «Label» وايي. رنګ **د
+/// کاروونکي خپل نښان** دی — پروګرام یې پخپله نه ټاکي. هدف یې دا
+/// دی چې د پیښو په جدول کې له لرې وپېژندل شي چې کومه پیښه بشپړه
+/// ده، کومه لا په کار کې ده، او کومه بیړنۍ ده — بې له پرانیستلو.
+///
+/// هر رنګ ته یوه **وړاندیز شوې معنا** ورکړل شوې. که ستاسو
+/// څانګه بل نظم لري، رنګونه پخپله وکاروئ — پروګرام پابند نه دی،
+/// یوازې فلټر کوي یې.
 enum ColorTag {
-  none('بې‌رنګه', Color(0xFF9AA1AC)),
-  red('سور', Color(0xFFE5484D)),
-  orange('نارنجي', Color(0xFFF76B15)),
-  yellow('ژیړ', Color(0xFFFFC53D)),
-  green('شین', Color(0xFF30A46C)),
-  blue('آبي', Color(0xFF3E7BFA)),
-  purple('بنفش', Color(0xFF8E4EC6)),
-  pink('ګلابي', Color(0xFFE93D82)),
-  gray('خړ', Color(0xFF6E7681));
+  none('بې‌رنګه', Color(0xFF9AA1AC), 'لا نښه نه ده لګېدلې'),
+  red('سور', Color(0xFFE5484D), 'بیړنی / حساس'),
+  orange('نارنجي', Color(0xFFF76B15), 'د تایید په تمه'),
+  yellow('ژیړ', Color(0xFFFFC53D), 'نیمګړی — شواهد کم دي'),
+  green('شین', Color(0xFF30A46C), 'بشپړ او تایید شوی'),
+  blue('آبي', Color(0xFF3E7BFA), 'د بیاکتنې لپاره'),
+  purple('بنفش', Color(0xFF8E4EC6), 'ځانګړی / مهم دوسیه'),
+  pink('ګلابي', Color(0xFFE93D82), 'د خپرونې لپاره چمتو'),
+  gray('خړ', Color(0xFF6E7681), 'زوړ / آرشیف شوی');
 
-  const ColorTag(this.label, this.color);
+  const ColorTag(this.label, this.color, this.meaning);
   final String label;
   final Color color;
+
+  /// وړاندیز شوې معنا — په tooltip او د رنګ ټاکونکي کې ښکاري.
+  final String meaning;
 
   static ColorTag fromName(String? n) =>
       ColorTag.values.firstWhere((e) => e.name == n, orElse: () => ColorTag.none);

@@ -5,6 +5,7 @@ import 'package:archive_manager/data/models/models.dart';
 import 'package:archive_manager/features/editor/html_builder.dart';
 
 void main() {
+  _links();
   test('generates a complete standalone RTL page', () {
     final e = EventMetadata(
       id: 'x1',
@@ -136,5 +137,55 @@ void main() {
     final html = buildEventHtml(e);
     expect('class="blk missing'.allMatches(html).length, 4);
     expect(html, isNot(contains('src=""')));
+  });
+}
+
+/// **د لینکونو اتومات پېژندل په جوړ شوي HTML کې.**
+void _links() {
+  EventMetadata withText(String text) => EventMetadata(
+        id: 'lk',
+        title: 'د لینک ازموینه',
+        folderPath: '/x',
+        date: TriDate.now(),
+        blocks: [Block(id: 'b1', kind: BlockKind.paragraph, text: text)],
+      );
+
+  group('لینکونه په HTML کې', () {
+    test('ساده لینک <a> کیږي او په نوې کړکۍ پرانیځي', () {
+      final h = buildEventHtml(withText('سرچینه https://tolonews.com/a دلته'));
+      expect(h, contains('<a href="https://tolonews.com/a"'));
+      expect(h, contains('target="_blank"'));
+      expect(h, contains('rel="noopener noreferrer"'));
+    });
+
+    test('www. لینک https:// ورسره لګیږي', () {
+      final h = buildEventHtml(withText('www.example.af'));
+      expect(h, contains('href="https://www.example.af"'));
+    });
+
+    test('بریښنالیک mailto: کیږي', () {
+      final h = buildEventHtml(withText('اړیکه: info@arvitch.af'));
+      expect(h, contains('href="mailto:info@arvitch.af"'));
+    });
+
+    test('javascript: هیڅکله <a href> نه جوړوي', () {
+      final h = buildEventHtml(withText('javascript:alert(1)'));
+      expect(h.contains('href="javascript:'), isFalse);
+    });
+
+    test('د HTML نښې لا هم تېښته کیږي — کوډ نه چلیږي', () {
+      final h = buildEventHtml(
+          withText('<script>alert(1)</script> او https://ok.af'));
+      expect(h.contains('<script>alert(1)</script>'), isFalse);
+      expect(h, contains('&lt;script&gt;'));
+      // خو ریښتینی لینک لا هم کار کوي
+      expect(h, contains('href="https://ok.af"'));
+    });
+
+    test('د لینک دننه د تېښتې وړ نښې خوندي دي', () {
+      final h = buildEventHtml(withText('https://x.af/?a=1&b="2"'));
+      expect(h.contains('&amp;'), isTrue);
+      expect(h.contains('href="https://x.af/?a=1&b="2""'), isFalse);
+    });
   });
 }

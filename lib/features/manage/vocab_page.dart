@@ -303,20 +303,13 @@ class _VocabPageState extends State<VocabPage> {
                               'پیښې په ثبت کې پخپله جوړیږي.'
                           : null,
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(AppTokens.s24),
-                      itemCount: items.length,
-                      itemBuilder: (context, i) => FadeSlideIn(
-                        delay: AppTokens.staggerFor(i),
-                        child: _TermRow(
-                          term: items[i],
-                          prefix: _prefix,
-                          icon: _icon,
-                          onEdit: () => _rename(items[i]),
-                          onDelete: () => _delete(items[i]),
-                          onShow: () => _showUsage(items[i]),
-                        ),
-                      ),
+                  : _TermGrid(
+                      items: items,
+                      prefix: _prefix,
+                      icon: _icon,
+                      onEdit: _rename,
+                      onDelete: _delete,
+                      onShow: _showUsage,
                     ),
         ),
       ],
@@ -333,8 +326,85 @@ enum _SortBy {
   final String label;
 }
 
-class _TermRow extends StatelessWidget {
-  const _TermRow({
+/// **د لغتونو ګریډ** — د کرښې پر ځای فشرده کارتونه.
+///
+/// پخوا هر کیورډ یوه بشپړه کرښه نیوله، نو د ۳۶ کیورډونو لیست
+/// اوږد او تش ښکارېده. اوس هر کارت ~۲۶۰px دی، نو په یوه پرده کې
+/// لسګونه ښکاري. ګریډ `builder` دی، نو د زرګونو لغتونو لیست هم
+/// یوازې هغه څه جوړوي چې پر پردې دي.
+class _TermGrid extends StatelessWidget {
+  const _TermGrid({
+    required this.items,
+    required this.prefix,
+    required this.icon,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onShow,
+  });
+
+  final List<VocabTerm> items;
+  final String prefix;
+  final IconData icon;
+  final void Function(VocabTerm) onEdit, onDelete, onShow;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      const gap = AppTokens.s12;
+      final cols = (c.maxWidth / 280).floor().clamp(1, 6);
+      final w = (c.maxWidth - AppTokens.s24 * 2 - gap * (cols - 1)) / cols;
+      final rows = (items.length + cols - 1) ~/ cols;
+
+      return ListView.builder(
+        padding: const EdgeInsets.all(AppTokens.s24),
+        itemCount: rows,
+        itemBuilder: (context, r) {
+          final start = r * cols;
+          final end = (start + cols).clamp(0, items.length);
+          return Padding(
+            padding: EdgeInsets.only(bottom: r == rows - 1 ? 0 : gap),
+            // `IntrinsicHeight` اړین دی: `stretch` بوله لوړوالی غواړي،
+            // خو د `ListView` دننه لوړوالی نامحدود دی. له دې پرته
+            // هر layout یوه استثنا اچوي.
+            child: IntrinsicHeight(
+              child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = start; i < end; i++) ...[
+                  if (i != start) const SizedBox(width: gap),
+                  SizedBox(
+                    width: w,
+                    child: FadeSlideIn(
+                      delay: AppTokens.staggerFor(i - start),
+                      child: _TermCard(
+                        term: items[i],
+                        prefix: prefix,
+                        icon: icon,
+                        onEdit: () => onEdit(items[i]),
+                        onDelete: () => onDelete(items[i]),
+                        onShow: () => onShow(items[i]),
+                      ),
+                    ),
+                  ),
+                ],
+                // وروستۍ کرښه ډکه نه وي — پاتې ځای تش پرېږده
+                if (end - start < cols)
+                  for (var k = end - start; k < cols; k++) ...[
+                    const SizedBox(width: gap),
+                    SizedBox(width: w),
+                  ],
+              ],
+              ),
+            ),
+          );
+        },
+      );
+    });
+  }
+}
+
+class _TermCard extends StatelessWidget {
+  const _TermCard({
     required this.term,
     required this.prefix,
     required this.icon,
@@ -353,96 +423,121 @@ class _TermRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final unused = term.usageCount == 0;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppTokens.s8),
-      child: HoverLift(
-        lift: 2,
-        onTap: unused ? null : onShow,
-        builder: (context, hovered) => AnimatedContainer(
-          duration: AppTokens.fast,
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppTokens.s16, vertical: AppTokens.s12),
-          decoration: BoxDecoration(
-            color: hovered
-                ? cs.surfaceContainer
-                : cs.surfaceContainerLowest,
-            borderRadius: AppTokens.brMd,
-            border: Border.all(
-                color: hovered ? cs.outline : cs.outlineVariant),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: unused
-                      ? cs.surfaceContainerHigh
-                      : cs.primary.withValues(alpha: 0.11),
-                  borderRadius: AppTokens.brSm,
+    return HoverLift(
+      lift: 2,
+      onTap: unused ? null : onShow,
+      builder: (context, hovered) => AnimatedContainer(
+        duration: AppTokens.fast,
+        padding: const EdgeInsets.fromLTRB(
+            AppTokens.s12, AppTokens.s12, AppTokens.s8, AppTokens.s8),
+        decoration: BoxDecoration(
+          color: hovered ? cs.surfaceContainer : cs.surfaceContainerLowest,
+          borderRadius: AppTokens.brMd,
+          border: Border.all(color: hovered ? cs.outline : cs.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: unused
+                        ? cs.surfaceContainerHigh
+                        : cs.primary.withValues(alpha: 0.11),
+                    borderRadius: AppTokens.brSm,
+                  ),
+                  child: Icon(icon,
+                      size: 14,
+                      color: unused ? cs.onSurfaceVariant : cs.primary),
                 ),
-                child: Icon(icon,
-                    size: 16,
-                    color: unused ? cs.onSurfaceVariant : cs.primary),
-              ),
-              const SizedBox(width: AppTokens.s16),
-              Expanded(
-                child: Text('$prefix${term.name}',
+                const SizedBox(width: AppTokens.s8),
+                Expanded(
+                  child: Text(
+                    '$prefix${term.name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontSize: 13.5, fontWeight: FontWeight.w600)),
-              ),
-              // د کارونې شمېره
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: unused
-                      ? cs.surfaceContainerHigh
-                      : AppTokens.green.withValues(alpha: 0.13),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  unused
-                      ? 'نه کارول کیږي'
-                      : 'په ${PashtoDigits.to(term.usageCount)} پیښو کې',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: unused ? cs.onSurfaceVariant : AppTokens.green,
+                        fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ),
-              ),
-              const SizedBox(width: AppTokens.s8),
-              if (!unused)
-                Tooltip(
-                  message: 'پیښې یې وګوره',
-                  child: IconButton(
-                    icon: const Icon(Icons.visibility_rounded, size: 17),
-                    onPressed: onShow,
-                    splashRadius: 17,
+              ],
+            ),
+            const SizedBox(height: AppTokens.s8),
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: unused
+                        ? cs.surfaceContainerHigh
+                        : AppTokens.green.withValues(alpha: 0.13),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    unused
+                        ? 'نه کارول کیږي'
+                        : '${PashtoDigits.to(term.usageCount)} پیښې',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: unused ? cs.onSurfaceVariant : AppTokens.green,
+                    ),
                   ),
                 ),
-              Tooltip(
-                message: 'ایډیټ',
-                child: IconButton(
-                  icon: const Icon(Icons.edit_rounded, size: 17),
-                  onPressed: onEdit,
-                  splashRadius: 17,
+                const Spacer(),
+                // د ځای ساتلو لپاره کوچني ایکنونه، بې پډنګه
+                _MiniAction(
+                  icon: Icons.edit_rounded,
+                  tip: 'ایډیټ',
+                  onTap: onEdit,
                 ),
-              ),
-              Tooltip(
-                message: 'حذف',
-                child: IconButton(
-                  icon: Icon(Icons.delete_outline_rounded,
-                      size: 17, color: cs.error),
-                  onPressed: onDelete,
-                  splashRadius: 17,
+                _MiniAction(
+                  icon: Icons.delete_outline_rounded,
+                  tip: 'حذف',
+                  color: cs.error,
+                  onTap: onDelete,
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+class _MiniAction extends StatelessWidget {
+  const _MiniAction({
+    required this.icon,
+    required this.tip,
+    required this.onTap,
+    this.color,
+  });
+
+  final IconData icon;
+  final String tip;
+  final VoidCallback onTap;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppTokens.brSm,
+        child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: Icon(icon, size: 15, color: color ?? cs.onSurfaceVariant),
+        ),
+      ),
+    );
+  }
+}
+

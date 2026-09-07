@@ -1,11 +1,15 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../core/date/pashto_calendar.dart';
+import '../core/text/pashto_text.dart';
 import '../core/theme/tokens.dart';
 import '../data/models/models.dart';
+import '../data/repository/app_state.dart';
 
 // ═══════════════════════════════════════════════════════════
 //  حرکتونه
@@ -158,6 +162,7 @@ class AppCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(AppTokens.s20),
     this.onTap,
     this.accent,
+    this.accentTooltip,
     this.selected = false,
   });
 
@@ -167,6 +172,9 @@ class AppCard extends StatelessWidget {
 
   /// که ورکړل شي، د کارت پورتنۍ څنډه پرې رنګیږي.
   final Color? accent;
+
+  /// د رنګې څنډې تشریح — د ماوس پر تېرېدو ښکاري.
+  final String? accentTooltip;
   final bool selected;
 
   @override
@@ -203,7 +211,10 @@ class AppCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (accent != null)
-                Container(height: 3, color: accent),
+                Tooltip(
+                  message: accentTooltip ?? '',
+                  child: Container(height: 3, color: accent),
+                ),
               Padding(padding: padding, child: child),
             ],
           ),
@@ -363,7 +374,8 @@ class ColorTagPicker extends StatelessWidget {
       children: [
         for (final c in ColorTag.values)
           Tooltip(
-            message: c.label,
+            // معنا هم ښیو — نو کاروونکی پوهیږي چې رنګ څه ښیي.
+            message: '${c.label} — ${c.meaning}',
             child: InkResponse(
               onTap: () => onChanged(c),
               radius: size * 0.75,
@@ -391,6 +403,40 @@ class ColorTagPicker extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// د ټاکل شوي رنګ معنا — د رنګ ټاکونکي لاندې یوه کوچنۍ کرښه.
+class ColorTagMeaning extends StatelessWidget {
+  const ColorTagMeaning({super.key, required this.value});
+  final ColorTag value;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppTokens.s8),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: value == ColorTag.none ? cs.outline : value.color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              '${value.label} · ${value.meaning}',
+              style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -734,6 +780,222 @@ class SectionLabel extends StatelessWidget {
           ?trailing,
         ],
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  لینک‌لرونکی متن
+// ═══════════════════════════════════════════════════════════
+
+/// **ساده متن چې لینکونه یې پخپله پېژندل کیږي او کلیک‌کېدونکي دي.**
+///
+/// کاروونکی په پاراګراف کې یوازې پته لیکي — `https://…` یا
+/// `www.…` یا بریښنالیک — او دلته پخپله رنګه، ښکته‌کرښه لرونکې
+/// او کلیک‌کېدونکې راځي. په یوه کلیک براوزر کې پرانیستل کیږي.
+class LinkedText extends StatefulWidget {
+  const LinkedText(
+    this.text, {
+    super.key,
+    this.style,
+    this.textAlign,
+  });
+
+  final String text;
+  final TextStyle? style;
+  final TextAlign? textAlign;
+
+  @override
+  State<LinkedText> createState() => _LinkedTextState();
+}
+
+class _LinkedTextState extends State<LinkedText> {
+  /// د هرې برخې لپاره یو `TapGestureRecognizer` — باید له منځه
+  /// یوسل شي، ګنې حافظه پاتې کیږي.
+  final _taps = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    for (final t in _taps) {
+      t.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final base = widget.style ?? DefaultTextStyle.of(context).style;
+    final chunks = linkify(widget.text);
+
+    // هیڅ لینک نشته → ساده `Text`، بې اضافي کار.
+    if (!chunks.any((c) => c.isLink)) {
+      return Text(widget.text, style: base, textAlign: widget.textAlign);
+    }
+
+    for (final t in _taps) {
+      t.dispose();
+    }
+    _taps.clear();
+
+    final spans = <InlineSpan>[];
+    for (final c in chunks) {
+      if (!c.isLink || !isSafeUrl(c.url!)) {
+        spans.add(TextSpan(text: c.text, style: base));
+        continue;
+      }
+      final tap = TapGestureRecognizer()
+        ..onTap = () => _open(context, c.url!);
+      _taps.add(tap);
+      spans.add(TextSpan(
+        text: c.text,
+        recognizer: tap,
+        style: base.copyWith(
+          color: cs.primary,
+          decoration: TextDecoration.underline,
+          decorationColor: cs.primary.withValues(alpha: 0.4),
+          fontWeight: FontWeight.w600,
+        ),
+      ));
+    }
+
+    return RichText(
+      textAlign: widget.textAlign ?? TextAlign.start,
+      textDirection: Directionality.of(context),
+      text: TextSpan(children: spans),
+    );
+  }
+
+  Future<void> _open(BuildContext context, String url) async {
+    final s = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await s.backend.openExternally(url);
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('لینک پرانیستل ونه شو: $url')),
+      );
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  د ټولېدو وړ برخه
+// ═══════════════════════════════════════════════════════════
+
+/// **یوه برخه چې ټولیږي او خپریږي.**
+///
+/// سرلیک یې د `SectionLabel` په څېر ښکاري، خو کلیک‌کېدونکی دی او
+/// یوه غشۍ لري. کله چې ډېرې برخې ولرو (میټاډیټا پینل، فلټر پینل)،
+/// کاروونکی هغه چې پرې کار نه کوي ټولولی شي — نو پاڼه لنډه او
+/// روښانه پاتې کیږي.
+class CollapsibleSection extends StatefulWidget {
+  const CollapsibleSection({
+    super.key,
+    required this.title,
+    required this.child,
+    this.icon,
+    this.badge,
+    this.trailing,
+    this.initiallyExpanded = true,
+  });
+
+  final String title;
+  final Widget child;
+  final IconData? icon;
+
+  /// یوه کوچنۍ تڼۍ چې د سرلیک په څنډه کې ښکاري (لکه «پاک کړه»).
+  final Widget? trailing;
+
+  /// یو کوچنی عدد/متن چې د ټولېدو پر مهال هم ښکاري — نو کاروونکی
+  /// پوهیږي چې دننه څه شته، بې له پرانیستلو.
+  final String? badge;
+
+  final bool initiallyExpanded;
+
+  @override
+  State<CollapsibleSection> createState() => _CollapsibleSectionState();
+}
+
+class _CollapsibleSectionState extends State<CollapsibleSection>
+    with SingleTickerProviderStateMixin {
+  late bool _open = widget.initiallyExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _open = !_open),
+          borderRadius: AppTokens.brSm,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppTokens.s8),
+            child: Row(
+              children: [
+                if (widget.icon != null) ...[
+                  Icon(widget.icon, size: 14, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  widget.title,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                if (widget.badge != null) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      widget.badge!,
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary,
+                      ),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                if (widget.trailing != null) ...[
+                  widget.trailing!,
+                  const SizedBox(width: 4),
+                ],
+                AnimatedRotation(
+                  turns: _open ? 0 : -0.25,
+                  duration: AppTokens.fast,
+                  curve: AppTokens.ease,
+                  child: Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 18, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // `AnimatedSize` د بندېدو پر مهال نرم راټولوي، خو کله چې
+        // تړل شوې وي، محتوا بیخي له ونې وځي — نو هیڅ نه رسمیږي.
+        AnimatedSize(
+          duration: AppTokens.fast,
+          curve: AppTokens.ease,
+          alignment: Alignment.topCenter,
+          child: _open
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: AppTokens.s4),
+                  child: widget.child,
+                )
+              : const SizedBox(width: double.infinity, height: 0),
+        ),
+      ],
     );
   }
 }
