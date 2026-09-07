@@ -355,7 +355,9 @@ class _TermGrid extends StatelessWidget {
       final w = (c.maxWidth - AppTokens.s24 * 2 - gap * (cols - 1)) / cols;
       final rows = (items.length + cols - 1) ~/ cols;
 
-      return ListView.builder(
+      return ScrollArea(
+        builder: (context, sc) => ListView.builder(
+        controller: sc,
         padding: const EdgeInsets.all(AppTokens.s24),
         itemCount: rows,
         itemBuilder: (context, r) {
@@ -398,6 +400,7 @@ class _TermGrid extends StatelessWidget {
             ),
           );
         },
+      ),
       );
     });
   }

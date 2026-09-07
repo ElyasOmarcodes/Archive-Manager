@@ -23,7 +23,9 @@ class DashboardPage extends StatelessWidget {
     final stats = s.stats;
     final today = TriDate.now();
 
-    return SingleChildScrollView(
+    return ScrollArea(
+      builder: (context, sc) => SingleChildScrollView(
+      controller: sc,
       padding: const EdgeInsets.all(AppTokens.s20),
       // په ډېرو پراخو سکرینونو کې محتوا مرکز ته راټولوو — بې له دې
       // به کارتونه ډېر اوږده او پلن ښکاري او سترګه به یې نه لولي.
@@ -99,6 +101,7 @@ class DashboardPage extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -265,7 +268,7 @@ class _StorageCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${PashtoDigits.to((ratio * 100).round())}٪',
+                      '${_pct(ratio)}٪',
                       style: TextStyle(
                         fontSize: 25,
                         fontWeight: FontWeight.w800,
@@ -965,4 +968,20 @@ class _RecentEvents extends StatelessWidget {
       ],
     );
   }
+}
+
+/// **د سلنې بڼه.**
+///
+/// یو ۹۶GB ډرایو چې ۴۷۹MB یې ډک وي = ۰.۴۹٪. ساده ګردول یې «۰٪»
+/// کوي — چې کاروونکي ته داسې ښکاري لکه پروګرام یې نه لولي. نو
+/// تر ۱٪ لاندې یوه اعشاریه ښیو، له هغه پورته ګرد عدد.
+String _pct(double ratio) {
+  final v = ratio * 100;
+  if (v <= 0) return PashtoDigits.to(0);
+  if (v < 1) {
+    // ۰.۴۹ → «۰٫۵»  (تر ۰.۱ ښکته یې «<۰٫۱» ښیو)
+    if (v < 0.05) return '<۰٫۱';
+    return PashtoDigits.to(v.toStringAsFixed(1)).replaceAll('.', '٫');
+  }
+  return PashtoDigits.to(v.round());
 }

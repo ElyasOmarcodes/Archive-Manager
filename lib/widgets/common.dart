@@ -587,29 +587,35 @@ class SearchBox extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return SizedBox(
       width: width,
+      // د لټون بار باید دقیقاً د خپلو ګاونډیو تڼیو هومره جګ وي.
+      height: AppTokens.controlH,
       child: TextField(
         controller: controller,
         autofocus: autofocus,
         onChanged: onChanged,
         onSubmitted: onSubmitted,
-        style: const TextStyle(fontSize: 13.5),
+        style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: Icon(Icons.search_rounded, size: 19,
+          prefixIcon: Icon(Icons.search_rounded, size: 17,
               color: cs.onSurfaceVariant),
-          prefixIconConstraints:
-              const BoxConstraints(minWidth: 40, minHeight: 36),
+          prefixIconConstraints: const BoxConstraints(
+              minWidth: 34, minHeight: AppTokens.controlH),
+          suffixIconConstraints: const BoxConstraints(
+              minWidth: 30, minHeight: AppTokens.controlH),
           suffixIcon: ValueListenableBuilder(
             valueListenable: controller,
             builder: (_, v, _) => v.text.isEmpty
                 ? const SizedBox.shrink()
                 : IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 17),
+                    icon: const Icon(Icons.close_rounded, size: 15),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                        minWidth: 26, minHeight: 26),
                     onPressed: () {
                       controller.clear();
                       onChanged?.call('');
                     },
-                    splashRadius: 15,
                   ),
           ),
         ),
@@ -892,9 +898,71 @@ class _LinkedTextState extends State<LinkedText> {
 /// یوه غشۍ لري. کله چې ډېرې برخې ولرو (میټاډیټا پینل، فلټر پینل)،
 /// کاروونکی هغه چې پرې کار نه کوي ټولولی شي — نو پاڼه لنډه او
 /// روښانه پاتې کیږي.
+// ═══════════════════════════════════════════════════════════
+//  سکرول
+// ═══════════════════════════════════════════════════════════
+
+/// **یو سکرول ساحه چې خپل کنټرولر لري.**
+///
+/// **ولې پکار ده؟** `Scrollbar` باید پوه شي چې کوم سکرول ویو ته
+/// تړلی دی. که سکرول ویو خپل کنټرولر ونه لري، Flutter یې د
+/// `PrimaryScrollController` سره تړي — او هغه یو دی، ټولو ته ګډ.
+/// نو کله چې یوه پاڼه دوه سکرول ویوونه ولري (لکه د پیښو پاڼه:
+/// د فیلټر پینل + کارتونه)، دواړه یوه کنټرولر ته ورځي او
+/// `Scrollbar` استثنا اچوي.
+///
+/// دلته هره ساحه خپل کنټرولر لري، نو بار یې سم مومي او د موس په
+/// واسطه کش کېدونکی وي.
+class ScrollArea extends StatefulWidget {
+  const ScrollArea({super.key, required this.builder});
+
+  final Widget Function(BuildContext context, ScrollController controller)
+      builder;
+
+  @override
+  State<ScrollArea> createState() => _ScrollAreaState();
+}
+
+class _ScrollAreaState extends State<ScrollArea> {
+  final _c = ScrollController();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scrollbar(
+        controller: _c,
+        child: widget.builder(context, _c),
+      );
+}
+
+/// **د ټولو شویو برخو یادښت.**
+///
+/// د ټولېدو حالت باید د ویجټ تر عمر اوږد وي. `ListView.builder` هغه
+/// توکي غورځوي چې له پردې بهر وځي — نو که حالت یوازې په `State` کې
+/// وي، سکرول یې پاکوي. کاروونکي همدا ولیده: یوه ډله یې ټوله کړه،
+/// سکرول یې وکړ، بیرته راغی — بیا خپره وه.
+///
+/// نو حالت دلته ساتو، د برخې د پېژندګلوۍ (`sectionId`) له مخې.
+class CollapsedRegistry {
+  CollapsedRegistry._();
+
+  static final Map<String, bool> _open = {};
+
+  static bool isOpen(String id, {bool orElse = true}) => _open[id] ?? orElse;
+  static void set(String id, bool open) => _open[id] = open;
+
+  /// د ازموینو لپاره.
+  static void reset() => _open.clear();
+}
+
 class CollapsibleSection extends StatefulWidget {
   const CollapsibleSection({
     super.key,
+    required this.sectionId,
     required this.title,
     required this.child,
     this.icon,
@@ -902,6 +970,9 @@ class CollapsibleSection extends StatefulWidget {
     this.trailing,
     this.initiallyExpanded = true,
   });
+
+  /// د دې برخې ثابت نوم — د ټولېدو حالت پرې ساتل کیږي.
+  final String sectionId;
 
   final String title;
   final Widget child;
@@ -922,7 +993,17 @@ class CollapsibleSection extends StatefulWidget {
 
 class _CollapsibleSectionState extends State<CollapsibleSection>
     with SingleTickerProviderStateMixin {
-  late bool _open = widget.initiallyExpanded;
+  late bool _open = CollapsedRegistry.isOpen(
+    widget.sectionId,
+    orElse: widget.initiallyExpanded,
+  );
+
+  void _toggle() {
+    setState(() {
+      _open = !_open;
+      CollapsedRegistry.set(widget.sectionId, _open);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -931,7 +1012,7 @@ class _CollapsibleSectionState extends State<CollapsibleSection>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         InkWell(
-          onTap: () => setState(() => _open = !_open),
+          onTap: _toggle,
           borderRadius: AppTokens.brSm,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: AppTokens.s8),

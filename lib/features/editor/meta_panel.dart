@@ -112,20 +112,25 @@ class _MetaPanelState extends State<MetaPanel> {
             ),
           ),
           Expanded(
-            child: ListView(
+            child: ScrollArea(
+              builder: (context, sc) => ListView(
+              controller: sc,
               padding: const EdgeInsets.all(AppTokens.s16),
               children: [
                 CollapsibleSection(
+                  sectionId: 'meta.title',
                   title: 'د پیښې نوم',
                   icon: Icons.title_rounded,
                   child: _TitleField(event: e, onChanged: widget.onChanged),
                 ),
                 CollapsibleSection(
+                  sectionId: 'meta.summary',
                   title: 'لنډ وضاحت',
                   icon: Icons.notes_rounded,
                   child: _SummaryField(event: e, onChanged: widget.onChanged),
                 ),
                 CollapsibleSection(
+                  sectionId: 'meta.rating',
                   title: 'درجه',
                   icon: Icons.star_rounded,
                   badge: e.rating == 0 ? null : PashtoDigits.to(e.rating),
@@ -146,6 +151,7 @@ class _MetaPanelState extends State<MetaPanel> {
                   ),
                 ),
                 CollapsibleSection(
+                  sectionId: 'meta.color',
                   title: 'رنګ ټګ',
                   icon: Icons.palette_rounded,
                   child: Column(
@@ -161,6 +167,7 @@ class _MetaPanelState extends State<MetaPanel> {
                   ),
                 ),
                 CollapsibleSection(
+                  sectionId: 'meta.category',
                   title: 'کټګوري',
                   icon: Icons.category_rounded,
                   badge: e.category.isEmpty ? null : '۱',
@@ -175,6 +182,7 @@ class _MetaPanelState extends State<MetaPanel> {
                   ),
                 ),
                 CollapsibleSection(
+                  sectionId: 'meta.keywords',
                   title: 'کیورډونه',
                   icon: Icons.sell_rounded,
                   badge: e.keywords.isEmpty
@@ -194,6 +202,7 @@ class _MetaPanelState extends State<MetaPanel> {
                   ),
                 ),
                 CollapsibleSection(
+                  sectionId: 'meta.persons',
                   title: 'شخصیتونه',
                   icon: Icons.groups_rounded,
                   badge: e.persons.isEmpty
@@ -212,6 +221,7 @@ class _MetaPanelState extends State<MetaPanel> {
                   ),
                 ),
                 CollapsibleSection(
+                  sectionId: 'meta.date',
                   title: 'تاریخ',
                   icon: Icons.event_rounded,
                   child: TriDateField(
@@ -221,6 +231,7 @@ class _MetaPanelState extends State<MetaPanel> {
                   ),
                 ),
                 CollapsibleSection(
+                  sectionId: 'meta.attachments',
                   title: 'ضمیمې',
                   icon: Icons.perm_media_rounded,
                   badge: e.attachmentCount == 0
@@ -230,6 +241,7 @@ class _MetaPanelState extends State<MetaPanel> {
                 ),
                 const SizedBox(height: AppTokens.s40),
               ],
+            ),
             ),
           ),
         ],

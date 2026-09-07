@@ -483,8 +483,9 @@ class _Canvas extends StatelessWidget {
 
     return Stack(
       children: [
-        Scrollbar(
-          child: ListView.builder(
+        ScrollArea(
+          builder: (context, sc) => ListView.builder(
+            controller: sc,
             padding: const EdgeInsets.fromLTRB(
                 AppTokens.s24, AppTokens.s24, AppTokens.s24, 120),
             itemCount: event.blocks.length + 1,

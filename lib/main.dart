@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -105,6 +106,13 @@ class ArchiveApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     return MaterialApp(
+      // **ولې خپل `ScrollBehavior`؟**
+      //
+      // د Flutter ډیفالټ چلند یوازې پر ډیسکټاپ سکرول بار ورزیاتوي.
+      // پر ویب او هغه ځایونو کې چې لمس هم شته، بار بیخي نه ښکاري —
+      // نو د موس په واسطه کش کول ناشوني وي. دلته یې هر ځای فعالوو،
+      // او لمس/سټایلس/ټریک‌پیډ ته هم د کش کولو اجازه ورکوو.
+      scrollBehavior: const _AppScrollBehavior(),
       title: 'د آرشیف چټک مدیر',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
@@ -132,4 +140,30 @@ class ArchiveApp extends StatelessWidget {
       home: homeOverride ?? const BootGate(),
     );
   }
+}
+
+/// د سکرول چلند — هر ځای کش‌کېدونکی بار.
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
+
+  /// **دلته بار نه جوړوو.**
+  ///
+  /// د Flutter ډیفالټ چلند هرې سکرول ساحې ته بار ورکوي او
+  /// `PrimaryScrollController` ورسره تړي — خو هغه یو دی، ټولو ته
+  /// ګډ. نو په یوه پاڼه کې دوه لیستونه استثنا اچوي.
+  ///
+  /// پر ځای یې هره اوږده ساحه په `ScrollArea` کې تړل شوې، چې خپل
+  /// کنټرولر لري. دا ډېر روښانه دی: بار هلته وي چې پکار وي.
+  @override
+  Widget buildScrollbar(
+          BuildContext context, Widget child, ScrollableDetails details) =>
+      child;
 }

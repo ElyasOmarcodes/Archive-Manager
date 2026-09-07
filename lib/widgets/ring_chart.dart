@@ -99,13 +99,29 @@ class _RingPainter extends CustomPainter {
     );
     if (total <= 0) return;
 
+    // **د لیدو وړ لږ‌تر‌لږه قوس.**
+    //
+    // پخوا هره برخه چې تر تشې (gap) وړه وه، بیخي غورځېده. نو که
+    // یو ۹۶GB ډرایو یوازې ۴۷۹MB ډک وي (۰.۵٪)، «کارول شوې» برخه
+    // هیڅ نه رسمېده او حلقه تشه ښکارېده — لکه چې خرابه وي.
+    //
+    // اوس هره برخه چې ارزښت یې تر صفر پورته وي، لږ‌تر‌لږه ~۳°
+    // ځای نیسي. دا د ډیټا تحریف نه دی — برخه ریښتیا شته، مونږ
+    // یوازې تضمینوو چې د سترګو په واسطه ولیدل شي.
+    final minSweep = gapRadians + 0.052;
+
     // له پورته څخه پیل (‑۹۰°)
     var start = -math.pi / 2;
     for (final s in slices) {
       if (s.value <= 0) continue;
-      final sweep = (s.value / total) * math.pi * 2 * progress;
+      final real = (s.value / total) * math.pi * 2 * progress;
+      // د حرکت پر مهال (progress→۰) لږ‌تر‌لږه هم صفر ته ځي، نو
+      // انیمیشن له تشې پیلیږي، نه له درې درجو.
+      final sweep = math.max(real, minSweep * progress);
+      // د حرکت په پیل کې `sweep` صفر ته نږدې وي — هلته د رسمولو
+      // څه نشته، او `SweepGradient` هم صفر پلن قوس نه مني.
       if (sweep <= gapRadians) {
-        start += sweep;
+        start += real;
         continue;
       }
       canvas.drawArc(

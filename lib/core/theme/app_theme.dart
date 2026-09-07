@@ -147,8 +147,10 @@ class AppTheme {
         filled: true,
         fillColor: cs.surfaceContainer,
         isDense: true,
+        // عمودي پیډنګ داسې چې فیلډ دقیقاً `controlH` جګ شي.
+        constraints: const BoxConstraints(minHeight: AppTokens.controlH),
         contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppTokens.s16, vertical: AppTokens.s12),
+            horizontal: AppTokens.s12, vertical: 9),
         hintStyle: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
         border: OutlineInputBorder(
           borderRadius: AppTokens.brMd,
@@ -170,8 +172,11 @@ class AppTheme {
 
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppTokens.s20, vertical: AppTokens.s16),
+          padding: const EdgeInsets.symmetric(horizontal: AppTokens.s16),
+          minimumSize: const Size(0, AppTokens.controlH),
+          // له دې پرته Material د لمس لپاره ۴۸px ورزیاتوي، نو تڼۍ
+          // تر خپلو ګاونډیو لوړې کیږي.
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(borderRadius: AppTokens.brMd),
           textStyle: const TextStyle(
               fontFamily: fontFamily, fontWeight: FontWeight.w600, fontSize: 14),
@@ -179,8 +184,11 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppTokens.s20, vertical: AppTokens.s16),
+          padding: const EdgeInsets.symmetric(horizontal: AppTokens.s16),
+          minimumSize: const Size(0, AppTokens.controlH),
+          // له دې پرته Material د لمس لپاره ۴۸px ورزیاتوي، نو تڼۍ
+          // تر خپلو ګاونډیو لوړې کیږي.
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(borderRadius: AppTokens.brMd),
           side: BorderSide(color: cs.outline),
           textStyle: const TextStyle(
@@ -189,8 +197,9 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppTokens.s16, vertical: AppTokens.s12),
+          padding: const EdgeInsets.symmetric(horizontal: AppTokens.s12),
+          minimumSize: const Size(0, AppTokens.controlH),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(borderRadius: AppTokens.brSm),
           textStyle: const TextStyle(
               fontFamily: fontFamily, fontWeight: FontWeight.w600, fontSize: 14),
@@ -219,10 +228,35 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       ),
 
+      // **د سکرول بار.**
+      //
+      // کاروونکي راپور کړه چې موس یې پرې اثر نه لري. دوه علتونه وو:
+      // ۱) `interactive` نه و ټاکل شوی، نو کش کول یې فعال نه و؛
+      // ۲) بار پخپله ډېر نری (۷px) او یوازې د سکرول پر مهال ښکاره
+      //    و — نو د نیولو لپاره هدف نه و.
+      //
+      // اوس تل ښکاري، پنډ دی، او د کش کولو وړ.
       scrollbarTheme: ScrollbarThemeData(
-        thumbColor: WidgetStatePropertyAll(cs.outline),
+        thumbVisibility: const WidgetStatePropertyAll(true),
+        interactive: true,
+        thumbColor: WidgetStateProperty.resolveWith((st) {
+          if (st.contains(WidgetState.dragged)) return cs.primary;
+          if (st.contains(WidgetState.hovered)) {
+            return cs.outline.withValues(alpha: 0.95);
+          }
+          return cs.outline.withValues(alpha: 0.55);
+        }),
+        trackColor: WidgetStateProperty.resolveWith((st) =>
+            st.contains(WidgetState.hovered)
+                ? cs.surfaceContainerHighest.withValues(alpha: 0.6)
+                : Colors.transparent),
+        trackVisibility: WidgetStateProperty.resolveWith(
+            (st) => st.contains(WidgetState.hovered)),
         radius: const Radius.circular(999),
-        thickness: const WidgetStatePropertyAll(7),
+        thickness: const WidgetStatePropertyAll(9),
+        // د نیولو لپاره لږ‌تر‌لږه اوږدوالی — ګنې په اوږدو لیستونو کې
+        // ټوپۍ دومره وړه شي چې ونه نیول شي.
+        minThumbLength: 44,
         crossAxisMargin: 2,
       ),
 

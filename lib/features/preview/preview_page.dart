@@ -122,8 +122,9 @@ class PreviewPage extends StatelessWidget {
         Expanded(
           child: Container(
             color: cs.surface,
-            child: Scrollbar(
-              child: SingleChildScrollView(
+            child: ScrollArea(
+                builder: (context, sc) => SingleChildScrollView(
+                controller: sc,
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 860),

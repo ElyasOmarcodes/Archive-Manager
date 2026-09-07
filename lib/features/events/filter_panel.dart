@@ -89,7 +89,9 @@ class FilterPanel extends StatelessWidget {
           // کاروونکی یې یوازې دوه یا درې ویني. اوس یوازې هغه ډلې جوړیږي
           // چې پر پردې راځي.
           Expanded(
-            child: ListView.builder(
+            child: ScrollArea(
+              builder: (context, sc) => ListView.builder(
+              controller: sc,
               padding: const EdgeInsets.all(AppTokens.s16),
               itemCount: 7,
               itemBuilder: (context, i) {
@@ -97,6 +99,7 @@ class FilterPanel extends StatelessWidget {
                 // شمېره ښیي، نو د ټولې شوې ډلې حالت هم معلوم وي.
                 final group = switch (i) {
                   0 => CollapsibleSection(
+                      sectionId: 'filter.rating',
                       title: 'درجه (ستوري)',
                       icon: Icons.star_rounded,
                       badge: _badge(q.ratings.length),
@@ -105,6 +108,7 @@ class FilterPanel extends StatelessWidget {
                       child: _RatingGroup(query: q, facets: f),
                     ),
                   1 => CollapsibleSection(
+                      sectionId: 'filter.color',
                       title: 'رنګ ټګ',
                       icon: Icons.palette_rounded,
                       badge: _badge(q.colors.length),
@@ -113,6 +117,7 @@ class FilterPanel extends StatelessWidget {
                       child: _ColorGroup(query: q, facets: f),
                     ),
                   2 => CollapsibleSection(
+                      sectionId: 'filter.date',
                       title: 'د پیښې تاریخ',
                       icon: Icons.event_rounded,
                       trailing: _clear(
@@ -122,6 +127,7 @@ class FilterPanel extends StatelessWidget {
                       child: _DateGroup(query: q),
                     ),
                   3 => CollapsibleSection(
+                      sectionId: 'filter.category',
                       title: 'کټګورۍ',
                       icon: Icons.category_rounded,
                       badge: _badge(q.categories.length),
@@ -136,6 +142,7 @@ class FilterPanel extends StatelessWidget {
                       ),
                     ),
                   4 => CollapsibleSection(
+                      sectionId: 'filter.keywords',
                       title: 'کیورډونه',
                       icon: Icons.sell_rounded,
                       badge: _badge(q.keywords.length),
@@ -152,6 +159,7 @@ class FilterPanel extends StatelessWidget {
                       ),
                     ),
                   5 => CollapsibleSection(
+                      sectionId: 'filter.persons',
                       title: 'شخصیتونه',
                       icon: Icons.groups_rounded,
                       badge: _badge(q.persons.length),
@@ -167,6 +175,7 @@ class FilterPanel extends StatelessWidget {
                       ),
                     ),
                   _ => CollapsibleSection(
+                      sectionId: 'filter.media',
                       title: 'د فایلونو ډول',
                       icon: Icons.perm_media_rounded,
                       badge: _badge(q.mediaKinds.length),
@@ -184,6 +193,7 @@ class FilterPanel extends StatelessWidget {
                       : Column(children: [const _Gap(), group]),
                 );
               },
+            ),
             ),
           ),
         ],

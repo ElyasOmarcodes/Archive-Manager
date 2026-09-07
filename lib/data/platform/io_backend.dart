@@ -616,18 +616,40 @@ class IoBackend implements ArchiveBackend {
     }
   }
 
+  /// یو فایل **یا یوه ویب پته** د سیسټم په ډیفالټ پروګرام کې پرانیزي.
+  ///
+  /// **پام:** دلته `Uri.file()` په ړوند ډول مه کاروئ. هغه هر څه د
+  /// **فایل مسیر** ګڼي، نو `https://x.af` په
+  /// `file:///https:/x.af` بدلېده او براوزر یې هیڅکله نه پرانیست —
+  /// کاروونکي «لینک پرانیستل ونه شو» لیده.
+  ///
+  /// اوس لومړی ګورو چې آیا دا یوه ریښتینې پته ده (سکیم لري) که یو
+  /// فایل مسیر.
   @override
   Future<void> openExternally(String path) async {
-    final uri = Uri.file(path);
-    if (!await launchUrl(uri)) {
-      // بېرته پاتې لار — د سیسټم خپل کمانډ.
-      if (Platform.isWindows) {
-        await Process.run('cmd', ['/c', 'start', '', path]);
-      } else if (Platform.isLinux) {
-        await Process.run('xdg-open', [path]);
-      } else if (Platform.isMacOS) {
-        await Process.run('open', [path]);
-      }
+    final target = path.trim();
+    if (target.isEmpty) return;
+
+    final parsed = Uri.tryParse(target);
+    final isWeb = parsed != null &&
+        parsed.hasScheme &&
+        const {'http', 'https', 'mailto'}.contains(parsed.scheme);
+
+    final uri = isWeb ? parsed : Uri.file(target);
+    try {
+      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {
+      // بیا د سیسټم خپل کمانډ ازمویو
+    }
+
+    // بېرته پاتې لار — د سیسټم خپل کمانډ.
+    if (Platform.isWindows) {
+      // `start` کې `&` ځانګړی معنا لري، نو پته په کوټیشن کې ورکوو.
+      await Process.run('cmd', ['/c', 'start', '', target]);
+    } else if (Platform.isLinux) {
+      await Process.run('xdg-open', [target]);
+    } else if (Platform.isMacOS) {
+      await Process.run('open', [target]);
     }
   }
 

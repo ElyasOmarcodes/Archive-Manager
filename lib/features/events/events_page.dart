@@ -238,7 +238,8 @@ class _Grid extends StatelessWidget {
       // پرانیستل د پایلو له شمېر څخه خپلواک دی.
       final rows = (s.events.length + cols - 1) ~/ cols;
 
-      return NotificationListener<ScrollNotification>(
+      return ScrollArea(
+        builder: (context, sc) => NotificationListener<ScrollNotification>(
         // د لیست پای ته نږدې شو → راتلونکې پاڼه راوړه.
         onNotification: (n) {
           if (n.metrics.pixels > n.metrics.maxScrollExtent - 600) {
@@ -247,6 +248,7 @@ class _Grid extends StatelessWidget {
           return false;
         },
         child: ListView.builder(
+        controller: sc,
         padding: const EdgeInsets.all(AppTokens.s24),
         itemCount: rows + (s.hasMore ? 1 : 0),
         itemBuilder: (context, r) {
@@ -274,6 +276,7 @@ class _Grid extends StatelessWidget {
             ),
           );
         },
+      ),
       ),
       );
     });

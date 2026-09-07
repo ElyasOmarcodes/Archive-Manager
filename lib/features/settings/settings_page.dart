@@ -15,7 +15,9 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
 
-    return SingleChildScrollView(
+    return ScrollArea(
+      builder: (context, sc) => SingleChildScrollView(
+      controller: sc,
       padding: const EdgeInsets.all(AppTokens.s24),
       child: Center(
         child: ConstrainedBox(
@@ -142,6 +144,7 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
