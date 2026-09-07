@@ -113,7 +113,8 @@ jobs:
         working-directory: windows/launcher
         run: |
           rc.exe /nologo /fo launcher.res launcher.rc || exit /b 1
-          cl.exe /nologo /O2 /EHsc /DNDEBUG ^
+          cl.exe /nologo /O2 /EHsc /std:c++17 /DNDEBUG ^
+            /DUNICODE /D_UNICODE ^
             /DAPP_VERSION=\"${{ env.APP_VERSION }}\" ^
             /DAPP_EXE=\"${{ env.APP_NAME }}.exe\" ^
             launcher.cpp launcher.res ^

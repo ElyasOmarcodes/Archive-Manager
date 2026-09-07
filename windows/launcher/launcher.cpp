@@ -83,7 +83,12 @@ static bool MakeDirs(const std::wstring& path) {
 
 /// دننه پروت ZIP یوې لارې ته لیکي.
 static bool WritePayload(const std::wstring& to) {
-  HRSRC res = FindResourceW(nullptr, MAKEINTRESOURCEW(1), RT_RCDATA);
+  // **پام:** `RT_RCDATA` د `MAKEINTRESOURCE(10)` په بڼه تعریف
+  // شوی، او هغه پخپله د `UNICODE` له تعریف سره تړلی دی. که
+  // `UNICODE` تعریف نه وي، ANSI بڼه راځي او `FindResourceW`
+  // یې نه مني. نو پراخه بڼه یې په ښکاره ډول کاروو.
+  HRSRC res = FindResourceW(nullptr, MAKEINTRESOURCEW(1),
+                            MAKEINTRESOURCEW(10));  // RT_RCDATA
   if (!res) return false;
   HGLOBAL h = LoadResource(nullptr, res);
   if (!h) return false;
@@ -108,8 +113,11 @@ static bool RunHidden(const std::wstring& cmd) {
   si.wShowWindow = SW_HIDE;
   PROCESS_INFORMATION pi{};
 
-  std::wstring mutable_cmd = cmd;  // CreateProcessW یې بدلولی شي
-  if (!CreateProcessW(nullptr, mutable_cmd.data(), nullptr, nullptr, FALSE,
+  // `CreateProcessW` دویم دلیل بدلولی شي، نو باید بدلېدونکی وي.
+  // په C++14 کې `.data()` یو `const wchar_t*` راګرځوي، نو
+  // `&buf[0]` کاروو — هغه په هره نسخه کې کار کوي.
+  std::wstring mutable_cmd = cmd;
+  if (!CreateProcessW(nullptr, &mutable_cmd[0], nullptr, nullptr, FALSE,
                       CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
     return false;
   }
@@ -176,7 +184,7 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
   STARTUPINFOW si{};
   si.cb = sizeof(si);
   PROCESS_INFORMATION pi{};
-  if (!CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, 0,
+  if (!CreateProcessW(nullptr, &cmd[0], nullptr, nullptr, FALSE, 0,
                       nullptr, dir.c_str(), &si, &pi)) {
     Fail(L"پروګرام پیل نه شو.");
     return 1;
