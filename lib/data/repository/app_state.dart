@@ -306,6 +306,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// **د پروګرام د هر څه اندازه.**
+  Future<void> setUiScale(double v) async {
+    settings.uiScale = v.clamp(0.6, 1.6);
+    await backend.saveSettings(settings);
+    notifyListeners();
+  }
+
   // ═══════════════════════════════════════════════════════
   //  پیښې
   // ═══════════════════════════════════════════════════════

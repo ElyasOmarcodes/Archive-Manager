@@ -21,7 +21,10 @@ class SettingsPage extends StatelessWidget {
       padding: const EdgeInsets.all(AppTokens.s24),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 780),
+          // پخوا ۷۸۰px و او هر څه یوه کالمه — نو پر لوی سکرین
+          // دواړو خواوو ته تشه فضا پاتې کېده. اوس پنلونه د شته
+          // ځای مطابق څنګ‌په‌څنګ ځای پر ځای کیږي.
+          constraints: const BoxConstraints(maxWidth: 1600),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -32,6 +35,7 @@ class SettingsPage extends StatelessWidget {
               ),
               const SizedBox(height: AppTokens.s24),
 
+              _Masonry(children: [
               // ── بڼه ──
               _Card(
                 title: 'بڼه',
@@ -54,6 +58,15 @@ class SettingsPage extends StatelessWidget {
                       onChanged: s.setTheme,
                     ),
                   ),
+                  // ── د پروګرام د هر څه اندازه ──
+                  _Setting(
+                    label: 'د پروګرام اندازه',
+                    hint: 'کوچنی = هر څه وړوکي کیږي او په پرده کې '
+                        'زیات شیان ځای نیسي، لکه چې پر لوی سکرین '
+                        'یې ګورئ. لوی = د لوستلو لپاره اسانه.',
+                    child: _ScalePicker(value: s.settings.uiScale,
+                        onChanged: s.setUiScale),
+                  ),
                   _Setting(
                     label: 'د ګریډ اندازه',
                     hint: 'د پیښو د کارتونو لویوالی',
@@ -69,8 +82,6 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ],
               ),
-
-              const SizedBox(height: AppTokens.s16),
 
               // ── تقویم ──
               _Card(
@@ -104,8 +115,6 @@ class SettingsPage extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: AppTokens.s16),
-
               // ── آرشیف ──
               _Card(
                 title: 'آرشیف',
@@ -133,13 +142,10 @@ class SettingsPage extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: AppTokens.s16),
-
               // ── لنډیز ──
               _StatsCard(),
-
-              const SizedBox(height: AppTokens.s16),
               _AboutCard(),
+              ]),
               const SizedBox(height: AppTokens.s40),
             ],
           ),
@@ -147,6 +153,142 @@ class SettingsPage extends StatelessWidget {
       ),
       ),
     );
+  }
+}
+
+/// **د پنلونو ډینامیک جوړښت.**
+///
+/// پخوا هر څه یوه اوږده کالمه وه — د موبایل په څېر. پر لوی سکرین
+/// دواړو خواوو ته تشه فضا پاتې کېده.
+///
+/// اوس د شته عرض مطابق ۱ تر ۳ کالمو ته ویشل کیږي. هر پنل هغې
+/// کالمې ته ځي چې تر ټولو لنډه وي — نو کالمې نږدې یو شان لوړې
+/// پاتې کیږي او هیڅ اوږده تشه نه جوړیږي.
+/// **د پروګرام د اندازې ټاکونکی.**
+///
+/// د یوه ساده سلایډر پرځای څو مشخصې کچې ورکوو — نو کاروونکی
+/// «۹۳٪» ونه ټاکي او بیا حیران نه شي چې ولې یو څه ناسم ښکاري.
+class _ScalePicker extends StatelessWidget {
+  const _ScalePicker({required this.value, required this.onChanged});
+
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Wrap(
+      spacing: AppTokens.s6,
+      runSpacing: AppTokens.s6,
+      children: [
+        for (final (v, label) in AppSettings.scaleOptions)
+          () {
+            final on = (value - v).abs() < 0.001;
+            return InkWell(
+              onTap: () => onChanged(v),
+              borderRadius: AppTokens.brSm,
+              child: AnimatedContainer(
+                duration: AppTokens.fast,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppTokens.s12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: on
+                      ? cs.primary.withValues(alpha: 0.14)
+                      : cs.surfaceContainer,
+                  borderRadius: AppTokens.brSm,
+                  border: Border.all(
+                      color: on ? cs.primary : cs.outlineVariant,
+                      width: on ? 1.5 : 1),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // د هرې کچې خپله بېلګه — «Aa» په هماغه اندازه
+                    Text(
+                      'Aa',
+                      style: TextStyle(
+                        fontSize: 14 * v,
+                        height: 1.1,
+                        fontWeight: FontWeight.w700,
+                        color: on ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                        color: on ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      '${PashtoDigits.to((v * 100).round())}٪',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }(),
+      ],
+    );
+  }
+}
+
+class _Masonry extends StatelessWidget {
+  const _Masonry({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      const gap = AppTokens.s16;
+      final cols = (c.maxWidth / 460).floor().clamp(1, 3);
+      if (cols == 1) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) const SizedBox(height: gap),
+              children[i],
+            ],
+          ],
+        );
+      }
+
+      // ساده ویش: هر پنل تر ټولو لنډې کالمې ته. ریښتینی لوړوالی
+      // تر رسمولو دمخه معلوم نه دی، نو د اټکل لپاره د ترتیب له
+      // مخې چکر وهو — پایله یې په عمل کې متوازنه وي.
+      final buckets = List.generate(cols, (_) => <Widget>[]);
+      for (var i = 0; i < children.length; i++) {
+        buckets[i % cols].add(children[i]);
+      }
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < cols; i++) ...[
+            if (i > 0) const SizedBox(width: gap),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var k = 0; k < buckets[i].length; k++) ...[
+                    if (k > 0) const SizedBox(height: gap),
+                    buckets[i][k],
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      );
+    });
   }
 }
 
@@ -207,34 +349,51 @@ class _Setting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label,
+            style:
+                const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+        if (hint != null) ...[
+          const SizedBox(height: 2),
+          Text(hint!,
+              style: TextStyle(
+                  fontSize: 11.5, height: 1.6, color: cs.onSurfaceVariant)),
+        ],
+      ],
+    );
+
     return Padding(
       padding: const EdgeInsets.all(AppTokens.s20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 13.5, fontWeight: FontWeight.w600)),
-                if (hint != null) ...[
-                  const SizedBox(height: 2),
-                  Text(hint!,
-                      style: TextStyle(
-                          fontSize: 11.5,
-                          height: 1.6,
-                          color: cs.onSurfaceVariant)),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: AppTokens.s20),
-          child,
-        ],
-      ),
+      // **ولې `LayoutBuilder`؟**
+      //
+      // اوس چې تنظیمات څو کالمو ته ویشل شوي، هره کالمه تنګه ده.
+      // د لیبل او کنټرول څنګ‌په‌څنګ ایښودل هلته بهر لوېږي. نو په
+      // تنګ ځای کې کنټرول لیبل ته لاندې ځي.
+      child: LayoutBuilder(builder: (context, c) {
+        if (c.maxWidth < 420) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              text,
+              const SizedBox(height: AppTokens.s12),
+              Align(alignment: AlignmentDirectional.centerStart, child: child),
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: text),
+            const SizedBox(width: AppTokens.s20),
+            Flexible(child: child),
+          ],
+        );
+      }),
     );
   }
 }
@@ -260,8 +419,11 @@ class _Segmented<T> extends StatelessWidget {
         borderRadius: AppTokens.brMd,
         border: Border.all(color: cs.outlineVariant),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      // **`Wrap` او نه `Row`.** په تنګه کالمه کې درې افشنونه یوې
+      // کرښې ته نه ځایږي، نو بهر لوېدل. اوس ښکته راګرځي.
+      child: Wrap(
+        spacing: 2,
+        runSpacing: 2,
         children: [
           for (final o in options)
             InkWell(

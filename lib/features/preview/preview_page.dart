@@ -469,12 +469,23 @@ class _BlockView extends StatelessWidget {
           textAlign: TextAlign.right,
           style: t.textTheme.bodyLarge?.copyWith(height: 1.9),
         ),
+        // د جوړ شوي `index.html` د `.quote` سټایل سره سم — هماغه
+        // د برانډ رنګ کرښه د پیل خوا ته، هماغه لوی نقل نښه.
+        // پخوا دلته یوازې یو ساده چوکاټ و، نو نقل قول د عادي متن
+        // په څېر ښکارېده.
         BlockKind.quote => Container(
           padding: const EdgeInsets.all(AppTokens.s24),
           decoration: BoxDecoration(
             color: cs.surfaceContainerLowest,
             borderRadius: AppTokens.brLg,
             border: Border.all(color: cs.outlineVariant),
+            // د پیل خوا ته پنډه رنګه کرښه (RTL کې ښي طرف ته)
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.centerStart,
+              end: AlignmentDirectional.centerEnd,
+              stops: const [0, 0.006, 0.006],
+              colors: [cs.primary, cs.primary, cs.surfaceContainerLowest],
+            ),
             boxShadow: [
               BoxShadow(
                 color: cs.shadow.withValues(alpha: 0.05),

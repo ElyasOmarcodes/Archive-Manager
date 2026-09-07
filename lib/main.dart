@@ -144,7 +144,9 @@ class ArchiveApp extends StatelessWidget {
         child: Column(
           children: [
             const AppTitleBar(),
-            Expanded(child: child ?? const SizedBox.shrink()),
+            Expanded(
+              child: _UiScale(child: child ?? const SizedBox.shrink()),
+            ),
           ],
         ),
       ),
@@ -177,4 +179,51 @@ class _AppScrollBehavior extends MaterialScrollBehavior {
   Widget buildScrollbar(
           BuildContext context, Widget child, ScrollableDetails details) =>
       child;
+}
+
+/// **د پروګرام د اندازې پوښ.**
+///
+/// کاروونکي وغوښتل چې د پروګرام هر څه وړوکي کړي، نو په پرده کې
+/// زیات شیان ځای ونیسي — «لکه چې پر لوی سکرین یې ګورې».
+///
+/// **څنګه؟** پروګرام ته یوه **لویه** منطقي پرده ورکوو (`size /
+/// scale`)، بیا رسم شوې پایله بېرته وړوکې کوو. نو ټول جوړښت —
+/// متن، ایکنونه، فاصلې، کارتونه — یو شان وړوکي کیږي او نسبتونه
+/// یې نه ماتیږي.
+///
+/// یوازې د متن کچه (`textScaler`) بدلول کافي نه دي: هغه فاصلې او
+/// ایکنونه نه بدلوي، نو جوړښت ګډوډیږي.
+class _UiScale extends StatelessWidget {
+  const _UiScale({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = context.select<AppState, double>((s) => s.settings.uiScale);
+    if ((scale - 1.0).abs() < 0.001) return child;
+
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth / scale;
+      final h = c.maxHeight / scale;
+      final mq = MediaQuery.of(context);
+
+      return ClipRect(
+        child: Transform.scale(
+          scale: scale,
+          alignment: Alignment.topRight, // RTL — له ښي څنډې پیل
+          child: SizedBox(
+            width: w,
+            height: h,
+            child: MediaQuery(
+              // منطقي پرده هم باید نوې اندازه وپېژني، ګنې د
+              // ریسپانسیف پرېکړې (لکه د سایډبار راټولېدل) ناسمې شي.
+              data: mq.copyWith(size: Size(w, h)),
+              child: child,
+            ),
+          ),
+        ),
+      );
+    });
+  }
 }

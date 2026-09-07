@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/date/pashto_calendar.dart';
+import '../../core/text/pashto_text.dart';
 import '../../core/theme/tokens.dart';
 import '../../data/models/models.dart';
 import '../../data/repository/app_state.dart';
@@ -62,6 +63,28 @@ class _NewEventDialogState extends State<NewEventDialog> {
     _summary.dispose();
     _newCategory.dispose();
     super.dispose();
+  }
+
+  /// د لیکل شوي متن مطابق موجودې کټګورۍ، په ترتیب سره.
+  List<VocabTerm> get _categoryMatches {
+    final q = _newCategory.text.trim();
+    if (q.isEmpty) return const [];
+    final scored = <(int, VocabTerm)>[];
+    for (final t in _categories) {
+      final sc = matchScore(t.name, q);
+      if (sc >= 0) scored.add((sc, t));
+    }
+    scored.sort((a, b) {
+      final c = b.$1.compareTo(a.$1);
+      return c != 0 ? c : b.$2.usageCount.compareTo(a.$2.usageCount);
+    });
+    return [for (final e in scored) e.$2];
+  }
+
+  /// آیا لیکل شوی متن دقیقاً یوې موجودې کټګورۍ سره برابر دی؟
+  bool get _categoryExact {
+    final q = searchKey(_newCategory.text);
+    return _categories.any((t) => searchKey(t.name) == q);
   }
 
   /// نوې کټګوري ثبتوي — سمدلاسه هم په لیست کې ښکاري او هم ټاکل کیږي.
@@ -245,18 +268,40 @@ class _NewEventDialogState extends State<NewEventDialog> {
                           () => _category = _category == c ? '' : c),
                     ),
                     const SizedBox(height: AppTokens.s8),
-                    // د نوې کټګوري چټکه ثبتونه
+                    // **لټون + نوې ثبتونه، یو فیلډ کې.**
+                    //
+                    // پخوا دا یوازې «نوې اضافه کړه» و، نو که ۱۰۰
+                    // کټګورۍ وای، کاروونکی باید ټولې چپونه وکتلې
+                    // وای. اوس د لیکلو پر مهال وړاندیز راځي —
+                    // هماغه چلند چې د ایډیټ پنل کې دی.
                     Row(
                       children: [
                         Expanded(
                           child: TextField(
                             controller: _newCategory,
-                            onSubmitted: (_) => _addCategory(),
+                            onChanged: (_) => setState(() {}),
+                            onSubmitted: (_) {
+                              // که یو موجود سمون ولري، هغه غوره کوو —
+                              // نو تکرار نه جوړیږي.
+                              final m = _categoryMatches;
+                              if (m.isNotEmpty && !_categoryExact) {
+                                setState(() {
+                                  _category = m.first.name;
+                                  _newCategory.clear();
+                                });
+                              } else {
+                                _addCategory();
+                              }
+                            },
                             style: const TextStyle(fontSize: 12.5),
-                            decoration: const InputDecoration(
-                              hintText: 'نوې کټګوري ولیکئ او اضافه یې کړئ…',
+                            decoration: InputDecoration(
+                              hintText: 'کټګوري ولټوئ یا نوې ولیکئ…',
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
+                              prefixIcon: const Icon(Icons.search_rounded,
+                                  size: 15),
+                              prefixIconConstraints: const BoxConstraints(
+                                  minWidth: 32, minHeight: 30),
+                              contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 10),
                             ),
                           ),
@@ -265,10 +310,21 @@ class _NewEventDialogState extends State<NewEventDialog> {
                         IconButton.filledTonal(
                           onPressed: _addCategory,
                           icon: const Icon(Icons.add_rounded, size: 18),
-                          tooltip: 'کټګوري اضافه کړه',
+                          tooltip: 'نوې کټګوري اضافه کړه',
                         ),
                       ],
                     ),
+                    if (_newCategory.text.trim().isNotEmpty)
+                      _CategorySuggestions(
+                        matches: _categoryMatches,
+                        typed: _newCategory.text.trim(),
+                        exact: _categoryExact,
+                        onPick: (name) => setState(() {
+                          _category = name;
+                          _newCategory.clear();
+                        }),
+                        onCreate: _addCategory,
+                      ),
 
                     const SizedBox(height: AppTokens.s20),
                     TriDateField(
@@ -511,6 +567,92 @@ class _ModeTile extends StatelessWidget {
               Icon(Icons.check_circle_rounded, size: 16, color: cs.primary),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// د کټګورۍ ژوندی وړاندیز — د ایډیټ پنل په څېر.
+class _CategorySuggestions extends StatelessWidget {
+  const _CategorySuggestions({
+    required this.matches,
+    required this.typed,
+    required this.exact,
+    required this.onPick,
+    required this.onCreate,
+  });
+
+  final List<VocabTerm> matches;
+  final String typed;
+  final bool exact;
+  final ValueChanged<String> onPick;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      constraints: const BoxConstraints(maxHeight: 172),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        borderRadius: AppTokens.brSm,
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: ListView(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        children: [
+          for (final t in matches.take(20))
+            InkWell(
+              onTap: () => onPick(t.name),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                child: Row(
+                  children: [
+                    Icon(Icons.north_west_rounded,
+                        size: 13, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(t.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12)),
+                    ),
+                    if (t.usageCount > 0)
+                      Text(PashtoDigits.to(t.usageCount),
+                          style: TextStyle(
+                              fontSize: 10.5, color: cs.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ),
+          if (!exact)
+            InkWell(
+              onTap: onCreate,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.add_circle_outline_rounded,
+                        size: 14, color: cs.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('نوې جوړه کړه: «$typed»',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: cs.primary)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

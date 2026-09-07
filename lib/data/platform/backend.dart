@@ -232,6 +232,7 @@ class AppSettings {
     this.gridSize = 3,
     this.showHiddenFiles = false,
     this.pashtoMonthNames = false,
+    this.uiScale = 1.0,
   });
 
   String? archiveRoot;
@@ -247,6 +248,22 @@ class AppSettings {
   /// د افغاني (وری/غویی) پرځای د دري (حمل/ثور) نومونه.
   bool pashtoMonthNames;
 
+  /// **د پروګرام د هر څه اندازه.**
+  ///
+  /// ۱.۰ = عادي. تر یو ښکته یعنې هر څه وړوکي کیږي او په پرده کې
+  /// زیات شیان ځای نیسي — لکه چې پر لوی سکرین یې ګورئ. تر یو
+  /// پورته د لوستلو لپاره اسانه، خو لږ شیان ښکاري.
+  double uiScale;
+
+  /// د منلو وړ کچې — د تنظیماتو پاڼه یې کاروي.
+  static const List<(double, String)> scaleOptions = [
+    (0.80, 'ډېر کوچنی'),
+    (0.90, 'کوچنی'),
+    (1.00, 'عادي'),
+    (1.10, 'لوی'),
+    (1.25, 'ډېر لوی'),
+  ];
+
   Map<String, dynamic> toJson() => {
         'archiveRoot': archiveRoot,
         'theme': theme.name,
@@ -255,6 +272,7 @@ class AppSettings {
         'gridSize': gridSize,
         'showHiddenFiles': showHiddenFiles,
         'pashtoMonthNames': pashtoMonthNames,
+        'uiScale': uiScale,
       };
 
   static AppSettings fromJson(Map<String, dynamic> j) => AppSettings(
@@ -265,5 +283,8 @@ class AppSettings {
         gridSize: (j['gridSize'] as num?)?.toInt() ?? 3,
         showHiddenFiles: j['showHiddenFiles'] as bool? ?? false,
         pashtoMonthNames: j['pashtoMonthNames'] as bool? ?? false,
+        // د زړو تنظیماتو فایلونو لپاره ډیفالټ، او د ناسمو ارزښتونو
+        // پر وړاندې ساتنه — ګنې یو ناسم عدد ټول UI ناکاره کوي.
+        uiScale: ((j['uiScale'] as num?)?.toDouble() ?? 1.0).clamp(0.6, 1.6),
       );
 }
