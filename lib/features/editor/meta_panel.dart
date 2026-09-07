@@ -655,14 +655,23 @@ class _Highlighted extends StatelessWidget {
     if (at < 0 || n.length != text.length) {
       return Text(text, style: base, overflow: TextOverflow.ellipsis);
     }
-    return RichText(
-      overflow: TextOverflow.ellipsis,
-      text: TextSpan(children: [
+    // **`Text.rich` او نه `RichText`.**
+    //
+    // د `RichText` ریښه‌یی `TextSpan` که سټایل ونه لري، فونټ نه
+    // ټاکل کیږي — نو CanvasKit یو داسې فونټ ټاکي چې پښتو حروف
+    // نه لري او متن **بیخي نه رسمیږي** (تشه کرښه). دا په ازموینو
+    // کې نه ښکاري، ځکه هلته بل رینډرر دی. `Text.rich` ریښه ته
+    // سټایل ورکوي، نو فونټ تل معلوم وي.
+    return Text.rich(
+      TextSpan(children: [
         if (at > 0) TextSpan(text: text.substring(0, at), style: base),
         TextSpan(text: text.substring(at, at + q.length), style: hit),
         if (at + q.length < text.length)
           TextSpan(text: text.substring(at + q.length), style: base),
       ]),
+      style: base,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

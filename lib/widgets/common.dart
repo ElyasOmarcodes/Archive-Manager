@@ -859,10 +859,13 @@ class _LinkedTextState extends State<LinkedText> {
       ));
     }
 
-    return RichText(
-      textAlign: widget.textAlign ?? TextAlign.start,
-      textDirection: Directionality.of(context),
-      text: TextSpan(children: spans),
+    // د `RichText` پرځای `Text.rich` — ریښه‌یی `TextSpan` ته سټایل
+    // ورکوي، نو فونټ تل معلوم وي. (له دې پرته CanvasKit پښتو متن
+    // بیخي نه رسموي.)
+    return Text.rich(
+      TextSpan(children: spans),
+      style: base,
+      textAlign: widget.textAlign,
     );
   }
 
