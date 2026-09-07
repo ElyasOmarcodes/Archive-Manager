@@ -153,23 +153,32 @@ jobs:
             Stop-Process -Force
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
-      # ── فوق‌العاده کمپرس: xz -9 --extreme ──
+      # ── xz بسته‌بندي ──
       #
-      # اوس یوازې **یو فایل** کمپرسوو — نو `tar` ته اړتیا نشته،
-      # مستقیم `xz` پرې چلوو. راوویستل یې هم ساده دي:
-      # یو ځل decompress، بیا سمدستي .exe.
-      - name: xz کمپرس (اعظمي کچه)
+      # **پام:** دلته xz ډېر لږ کموي (~۱٪)، او دا سم دی — د exe
+      # دننه بسته لا دمخه ZIP (deflate) ده، نو دوه‌ځلې کمپرس
+      # ګټه نه لري. اصلي کمپرس هماغه ZIP کوي: ~۴۰MB → ~۱۴MB.
+      #
+      # نو ولې لا هم xz؟ ځکه چې د تحویل بڼه یې غوښتل شوې، او
+      # لګښت یې صفر دی. د دې پر ځای چې بسته بې‌کمپرسه ودروو او
+      # xz ته یې پرېږدو، دا لار غوره ده: هغه به ډانلوډ لږ څه
+      # کوچنی کړي، خو کاروونکي ته به یو ۴۰MB exe پاتې شي.
+      # دلته کاروونکی یوازې یو ۱۴MB فایل ساتي.
+      - name: xz بسته‌بندي
         shell: bash
         run: |
           mkdir -p dist
           cp "windows/launcher/${APP_NAME}.exe" "dist/${APP_NAME}.exe"
           cd dist
-          # -9e = تر ټولو لوړه کچه؛ -T0 = ټول کورونه
-          xz -9 --extreme --threads=0 --verbose --keep "${APP_NAME}.exe"
-          ls -lh
-          echo "---"
-          echo "خام:    $(du -h ${APP_NAME}.exe | cut -f1)"
-          echo "کمپرس:  $(du -h ${APP_NAME}.exe.xz | cut -f1)"
+          raw=$(stat -c%s "${APP_NAME}.exe")
+          xz -9 --extreme --threads=0 --keep "${APP_NAME}.exe"
+          zip=$(stat -c%s "${APP_NAME}.exe.xz")
+          echo "─────────────────────────────────"
+          printf 'exe:     %.1f MB\n' "$(echo "$raw/1048576" | bc -l)"
+          printf 'exe.xz:  %.1f MB  (%.1f%%)\n' \
+            "$(echo "$zip/1048576" | bc -l)" \
+            "$(echo "100*$zip/$raw" | bc -l)"
+          echo "─────────────────────────────────"
           rm -f "${APP_NAME}.exe"
 
       - name: د خروجي اپلوډ
