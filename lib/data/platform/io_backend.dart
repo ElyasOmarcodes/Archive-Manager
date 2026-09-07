@@ -31,6 +31,10 @@ class IoBackend implements ArchiveBackend {
 
   /// د پیښې د پېژندنې فایل — که یو فولډر دا ولري، پیښه ده.
   static const metaFile = 'metadata.json';
+
+  /// د پاڼې محتوا — بلاکونه، ضمیمې، لینکونه. یوازې د پرانیستلو پر مهال
+  /// لوستل کیږي، نو د لټون بار پرې نه لوېږي.
+  static const contentFile = 'content.json';
   static const htmlFile = 'index.html';
   static const attachmentsDir = 'attachments';
 
@@ -281,10 +285,16 @@ class IoBackend implements ArchiveBackend {
 
     e.updatedAt = DateTime.now();
 
-    // ۱) حقیقت پر ډیسک
-    await File(p.join(e.folderPath, metaFile)).writeAsString(
-        const JsonEncoder.withIndent('  ').convert(e.toJson()),
-        flush: true);
+    // ۱) حقیقت پر ډیسک — دوه فایله:
+    //    metadata.json  → یوازې د فلټر ډګرونه (وړوکی، ژر لوستل کیږي)
+    //    content.json   → د پاڼې محتوا (یوازې د پرانیستلو پر مهال)
+    await File(p.join(e.folderPath, metaFile))
+        .writeAsString(jsonEncode(e.toJson()), flush: true);
+
+    if (e.contentLoaded) {
+      await File(p.join(e.folderPath, contentFile))
+          .writeAsString(jsonEncode(e.toContentJson()), flush: true);
+    }
 
     if (html != null) {
       await File(p.join(e.folderPath, htmlFile))
@@ -293,6 +303,34 @@ class IoBackend implements ArchiveBackend {
 
     // ۲) ایندکس تازه کړه
     _db.upsert(e);
+  }
+
+  @override
+  Future<EventMetadata> loadContent(EventMetadata e) async {
+    if (e.contentLoaded) return e;
+    try {
+      final f = File(p.join(e.folderPath, contentFile));
+      if (await f.exists()) {
+        e.applyContent(
+            jsonDecode(await f.readAsString()) as Map<String, dynamic>);
+        return e;
+      }
+      // زړه بڼه: محتوا لا هم د `metadata.json` دننه ده.
+      final m = File(p.join(e.folderPath, metaFile));
+      if (await m.exists()) {
+        final j = jsonDecode(await m.readAsString()) as Map<String, dynamic>;
+        if (j.containsKey('blocks') || j.containsKey('attachments')) {
+          e.applyContent(j);
+          return e;
+        }
+      }
+      // هیڅ محتوا نشته — تشه پاڼه ده.
+      e.applyContent(const {});
+    } catch (_) {
+      // ناسم یا نه‑لوستل‑کېدونکی فایل. `contentLoaded` نه لګوو، نو
+      // د ثبت پر مهال زوړ لنډیز نه ورکیږي.
+    }
+    return e;
   }
 
   @override
@@ -435,7 +473,7 @@ class IoBackend implements ArchiveBackend {
       final f = File(p.join(e.folderPath, metaFile));
       if (await f.exists()) {
         await f.writeAsString(
-            const JsonEncoder.withIndent('  ').convert(e.toJson()));
+            jsonEncode(e.toJson()));
       }
     }
 

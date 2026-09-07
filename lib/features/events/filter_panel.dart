@@ -84,46 +84,52 @@ class FilterPanel extends StatelessWidget {
             ),
           ),
 
+          // **ولې `builder`؟** پخوا دا یو ساده `ListView(children: [...])` و،
+          // نو د پاڼې په پرانیستلو کې یې ټولې اوه ډلې جوړولې — که څه هم
+          // کاروونکی یې یوازې دوه یا درې ویني. اوس یوازې هغه ډلې جوړیږي
+          // چې پر پردې راځي.
           Expanded(
-            child: ListView(
+            child: ListView.builder(
               padding: const EdgeInsets.all(AppTokens.s16),
-              children: [
-                _RatingGroup(query: q, facets: f),
-                const _Gap(),
-                _ColorGroup(query: q, facets: f),
-                const _Gap(),
-                _DateGroup(query: q),
-                const _Gap(),
-                _TermGroup(
-                  title: 'کټګورۍ',
-                  icon: Icons.category_rounded,
-                  counts: f.categories,
-                  selected: q.categories,
-                  onChanged: (v) => s.setQuery(q.copyWith(categories: v)),
-                ),
-                const _Gap(),
-                _TermGroup(
-                  title: 'کیورډونه',
-                  icon: Icons.sell_rounded,
-                  counts: f.keywords,
-                  selected: q.keywords,
-                  onChanged: (v) => s.setQuery(q.copyWith(keywords: v)),
-                  searchable: true,
-                  prefix: '#',
-                ),
-                const _Gap(),
-                _TermGroup(
-                  title: 'شخصیتونه',
-                  icon: Icons.groups_rounded,
-                  counts: f.persons,
-                  selected: q.persons,
-                  onChanged: (v) => s.setQuery(q.copyWith(persons: v)),
-                  searchable: true,
-                ),
-                const _Gap(),
-                _MediaGroup(query: q, facets: f),
-                const SizedBox(height: AppTokens.s40),
-              ],
+              itemCount: 7,
+              itemBuilder: (context, i) {
+                final group = switch (i) {
+                  0 => _RatingGroup(query: q, facets: f),
+                  1 => _ColorGroup(query: q, facets: f),
+                  2 => _DateGroup(query: q),
+                  3 => _TermGroup(
+                      title: 'کټګورۍ',
+                      icon: Icons.category_rounded,
+                      counts: f.categories,
+                      selected: q.categories,
+                      onChanged: (v) => s.setQuery(q.copyWith(categories: v)),
+                    ),
+                  4 => _TermGroup(
+                      title: 'کیورډونه',
+                      icon: Icons.sell_rounded,
+                      counts: f.keywords,
+                      selected: q.keywords,
+                      onChanged: (v) => s.setQuery(q.copyWith(keywords: v)),
+                      searchable: true,
+                      prefix: '#',
+                    ),
+                  5 => _TermGroup(
+                      title: 'شخصیتونه',
+                      icon: Icons.groups_rounded,
+                      counts: f.persons,
+                      selected: q.persons,
+                      onChanged: (v) => s.setQuery(q.copyWith(persons: v)),
+                      searchable: true,
+                    ),
+                  _ => _MediaGroup(query: q, facets: f),
+                };
+                return Padding(
+                  padding: EdgeInsets.only(bottom: i == 6 ? AppTokens.s40 : 0),
+                  child: i == 0
+                      ? group
+                      : Column(children: [const _Gap(), group]),
+                );
+              },
             ),
           ),
         ],

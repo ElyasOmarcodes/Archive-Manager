@@ -77,7 +77,7 @@ class MemoryIndex implements EventIndex {
       if (!e.persons.any(q.persons.contains)) return false;
     }
     if (exclude != 'media' && q.mediaKinds.isNotEmpty) {
-      if (!e.attachments.any((a) => q.mediaKinds.contains(a.kind))) return false;
+      if (!e.mediaBreakdown.keys.any(q.mediaKinds.contains)) return false;
     }
     if (exclude != 'date') {
       if (q.fromJdn != null && e.date.jdn < q.fromJdn!) return false;
@@ -195,7 +195,7 @@ class MemoryIndex implements EventIndex {
       keywords: tally<String>('keyword', (e) => e.keywords),
       persons: tally<String>('person', (e) => e.persons),
       mediaKinds:
-          tally<MediaKind>('media', (e) => e.attachments.map((a) => a.kind)),
+          tally<MediaKind>('media', (e) => e.mediaBreakdown.keys),
       years: tally<int>('date', (e) => [e.date.shamsi.year]),
     );
   }
@@ -206,8 +206,8 @@ class MemoryIndex implements EventIndex {
     final media = <MediaKind, int>{};
     final ratings = <int, int>{};
     for (final e in all) {
-      for (final a in e.attachments) {
-        media[a.kind] = (media[a.kind] ?? 0) + 1;
+      for (final m in e.mediaBreakdown.entries) {
+        media[m.key] = (media[m.key] ?? 0) + m.value;
       }
       ratings[e.rating] = (ratings[e.rating] ?? 0) + 1;
     }

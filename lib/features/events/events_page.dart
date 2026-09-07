@@ -219,22 +219,41 @@ class _Grid extends StatelessWidget {
       const gap = AppTokens.s16;
       final w = (c.maxWidth - AppTokens.s24 * 2 - gap * (cols - 1)) / cols;
 
-      return SingleChildScrollView(
+      // **ولې `ListView.builder` او نه `Wrap`؟**
+      //
+      // `Wrap` ټول کارتونه په لومړي فریم کې جوړوي — که د لټون پایله
+      // ۵۰۰ پیښې وي، ۵۰۰ کارته جوړیږي خو کاروونکی یې یوازې ۹ ویني.
+      // دلته یوازې هغه کرښې جوړیږي چې پر پردې ښکاري، نو د پاڼې
+      // پرانیستل د پایلو له شمېر څخه خپلواک دی.
+      final rows = (s.events.length + cols - 1) ~/ cols;
+
+      return ListView.builder(
         padding: const EdgeInsets.all(AppTokens.s24),
-        child: Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (var i = 0; i < s.events.length; i++)
-              SizedBox(
-                width: w,
-                child: FadeSlideIn(
-                  delay: AppTokens.staggerFor(i),
-                  child: EventCard(event: s.events[i]),
-                ),
-              ),
-          ],
-        ),
+        itemCount: rows,
+        itemBuilder: (context, r) {
+          final start = r * cols;
+          final end = (start + cols).clamp(0, s.events.length);
+          return Padding(
+            padding: EdgeInsets.only(bottom: r == rows - 1 ? 0 : gap),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = start; i < end; i++) ...[
+                  if (i != start) const SizedBox(width: gap),
+                  SizedBox(
+                    width: w,
+                    child: FadeSlideIn(
+                      // ځنډ یوازې د لومړۍ لیدنې لپاره — د سکرول پر
+                      // مهال کارت باید سمدستي راښکاره شي.
+                      delay: AppTokens.staggerFor(i - start),
+                      child: EventCard(event: s.events[i]),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
       );
     });
   }

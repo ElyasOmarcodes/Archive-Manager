@@ -196,8 +196,10 @@ class IndexDb implements EventIndex {
       st.psIns.execute([e.id, p]);
       st.vocabIns.execute(['person', p]);
     }
-    for (final m in e.attachments.map((a) => a.kind.name).toSet()) {
-      st.mdIns.execute([e.id, m]);
+    // د رسنیو ډولونه له لنډیز څخه اخلو، نه له `attachments` — د لټون پر
+    // مهال محتوا نه وي لوستل شوې، خو لنډیز تل شته دی.
+    for (final m in e.mediaBreakdown.keys) {
+      st.mdIns.execute([e.id, m.name]);
     }
     if (e.category.trim().isNotEmpty) {
       st.vocabIns.execute(['category', e.category]);

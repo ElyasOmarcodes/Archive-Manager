@@ -198,14 +198,31 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// د پیښې محتوا لا نه ده لوستل شوې (`content.json` پر لاره ده).
+  bool editorLoading = false;
+
+  /// پیښه پرانیزي. د پاڼې بدلون سمدستي کیږي — محتوا وروسته راځي،
+  /// نو په سایډبار او کارتونو کلیک هېڅکله نه ځنډیږي.
   void openEditor(EventMetadata e, {bool preview = false}) {
     editing = e;
     previewMode = preview;
+    if (e.contentLoaded) {
+      editorLoading = false;
+      notifyListeners();
+      return;
+    }
+    editorLoading = true;
     notifyListeners();
+    backend.loadContent(e).then((_) {
+      if (editing != e) return; // کاروونکی مخکې لاړ
+      editorLoading = false;
+      notifyListeners();
+    });
   }
 
   void closeEditor() {
     editing = null;
+    editorLoading = false;
     previewMode = false;
     notifyListeners();
     refresh();

@@ -18,7 +18,7 @@ class FadeSlideIn extends StatefulWidget {
     required this.child,
     this.delay = Duration.zero,
     this.offset = const Offset(0, 0.05),
-    this.duration = AppTokens.slow,
+    this.duration = AppTokens.enter,
   });
 
   final Widget child;
@@ -34,6 +34,14 @@ class _FadeSlideInState extends State<FadeSlideIn>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c =
       AnimationController(vsync: this, duration: widget.duration);
+
+  // یو ځل جوړیږي، نه په هر `build` کې. پخوا یې هر ځل نوی
+  // `CurvedAnimation` جوړاوه — هغه اوریدونکي پرېښودل او د هر
+  // فریم لپاره یې کار زیاتاوه.
+  late final Animation<double> _fade =
+      CurvedAnimation(parent: _c, curve: AppTokens.ease);
+  late final Animation<Offset> _slide =
+      Tween(begin: widget.offset, end: Offset.zero).animate(_fade);
 
   @override
   void initState() {
@@ -55,13 +63,13 @@ class _FadeSlideInState extends State<FadeSlideIn>
 
   @override
   Widget build(BuildContext context) {
-    final curved = CurvedAnimation(parent: _c, curve: AppTokens.ease);
+    // ساده ساتل شوی دی په قصد سره. یو «هوښیار» بڼه هم وازمویل شوه —
+    // چې د حرکت له پای ته رسېدو روسته پوړونه لرې کړي — خو هغه د ونې
+    // بڼه بدلوله، نو ټول کارتونه یو ځل بیا پر ځای شول (relayout).
+    // اندازه‌ګیري یې وښوده: ۲۹۵۰ms → ۳۷۰۵ms. نو دا بڼه غوره ده.
     return FadeTransition(
-      opacity: curved,
-      child: SlideTransition(
-        position: Tween(begin: widget.offset, end: Offset.zero).animate(curved),
-        child: widget.child,
-      ),
+      opacity: _fade,
+      child: SlideTransition(position: _slide, child: widget.child),
     );
   }
 }

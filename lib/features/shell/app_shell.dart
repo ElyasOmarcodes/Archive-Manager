@@ -48,23 +48,16 @@ class AppShell extends StatelessWidget {
             child: Column(
               children: [
                 const _TopBar(),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: AppTokens.base,
-                    switchInCurve: AppTokens.ease,
-                    switchOutCurve: AppTokens.ease,
-                    transitionBuilder: (child, anim) => FadeTransition(
-                      opacity: anim,
-                      child: SlideTransition(
-                        position: Tween(
-                                begin: const Offset(0, 0.012), end: Offset.zero)
-                            .animate(anim),
-                        child: child,
-                      ),
-                    ),
-                    child: _body(s),
-                  ),
-                ),
+                // **ولې دلته `AnimatedSwitcher` نشته؟**
+                //
+                // هغه د بدلون پر مهال **دواړه** پاڼې په ونه کې ساتي او پر
+                // ټوله پردۍ یو `saveLayer` (شفافیت پوړ) جوړوي — یعنې
+                // د هرې فریم لپاره دوه پاڼې رسمیږي. دا په ۱۶۰۰×۱۰۰۰ کې
+                // ډېر ګران دی، او هماغه ځنډ و چې کاروونکي لیده.
+                //
+                // اوس پاڼه سمدستي بدلیږي، او د پاڼې خپل توکي په
+                // `FadeSlideIn` سره نرم راځي — هماغه ښکلا، خو یوه پاڼه.
+                Expanded(child: _body(s)),
               ],
             ),
           ),
@@ -76,6 +69,13 @@ class AppShell extends StatelessWidget {
   Widget _body(AppState s) {
     // که پیښه پرانیستل شوې وي، ایډیټر/پریویو د هرې پاڼې پر ځای ښکاري.
     if (s.editing != null) {
+      // محتوا لا په لوستلو کې ده — ایډیټر یوازې بشپړې ډیټا سره پیل کیږي.
+      if (s.editorLoading) {
+        return const Center(
+            key: ValueKey('editor-loading'),
+            child: SizedBox(
+                width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.4)));
+      }
       return EventEditorPage(key: ValueKey('editor-${s.editing!.id}'));
     }
     return switch (s.page) {

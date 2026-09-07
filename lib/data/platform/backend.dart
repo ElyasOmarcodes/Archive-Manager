@@ -146,6 +146,12 @@ abstract class ArchiveBackend {
   Future<ArchiveStats> stats();
   Future<EventMetadata?> eventById(String id);
 
+  /// د پیښې محتوا (`content.json`) پر غوښتنه راولي — بلاکونه، فایلونه، لینکونه.
+  ///
+  /// د لټون او فلټر پر مهال دې ته اړتیا نشته، نو یوازې هغه وخت لوستل کیږي
+  /// چې کاروونکی پیښه پرانیزي. که مخکې لوستل شوې وي، بیا نه لوستل کیږي.
+  Future<EventMetadata> loadContent(EventMetadata e);
+
   // ── لیکل ────────────────────────────────────────────────
   /// یوه پیښه پر ډیسک ولیکه (`metadata.json` + `index.html`) او ایندکس تازه کړه.
   Future<void> saveEvent(EventMetadata e, {String? html});

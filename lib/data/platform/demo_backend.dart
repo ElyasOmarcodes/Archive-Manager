@@ -78,6 +78,13 @@ class DemoBackend implements ArchiveBackend {
 
   final Map<String, String> _html = {};
 
+  /// په ډیمو کې محتوا په حافظه کې ده، نو څه لوستلو ته اړتیا نشته.
+  @override
+  Future<EventMetadata> loadContent(EventMetadata e) async {
+    if (!e.contentLoaded) e.applyContent(const {});
+    return e;
+  }
+
   @override
   Future<void> saveEvent(EventMetadata e, {String? html}) async {
     if (html != null) _html[e.folderPath] = html;

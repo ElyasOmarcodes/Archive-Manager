@@ -36,6 +36,16 @@ void main() {
     if (out.existsSync()) out.deleteSync(recursive: true);
     out.createSync(recursive: true);
 
+    // ── فونټونه — دقیقاً هغه ځای چې پروګرام یې لیکي ──
+    final fontDir = Directory(p.join(out.path, '_arvitch', 'fonts'))
+      ..createSync(recursive: true);
+    for (final w in ['Regular', 'SemiBold', 'Bold', 'ExtraBold']) {
+      final src = File('assets/webfonts/Vazirmatn-$w.woff2');
+      if (src.existsSync()) {
+        src.copySync(p.join(fontDir.path, 'Vazirmatn-$w.woff2'));
+      }
+    }
+
     // د تصادف تخم ثابت دی — نو هر ځل هماغه آرشیف جوړیږي.
     final rnd = Random(20260905);
 
@@ -183,8 +193,11 @@ void main() {
         blocks: blocks,
       );
 
-      File(p.join(folder, 'metadata.json')).writeAsStringSync(
-          const JsonEncoder.withIndent('  ').convert(e.toJson()));
+      // دوه فایله: وړوکی `metadata.json` (فلټر) + `content.json` (محتوا).
+      File(p.join(folder, 'metadata.json'))
+          .writeAsStringSync(jsonEncode(e.toJson()));
+      File(p.join(folder, 'content.json'))
+          .writeAsStringSync(jsonEncode(e.toContentJson()));
 
       // ── index.html یوازې د یوې برخې لپاره (د حجم د کمولو لپاره) ──
       if (i < htmlCount) {
@@ -195,7 +208,75 @@ void main() {
       }
     }
 
+    // ── د کاروونکي لپاره لارښود ──
+    final years = (byYear.keys.toList()..sort());
+    String n(int v) => PashtoDigits.to(_thousands(v));
+    File(p.join(out.path, 'README.txt')).writeAsStringSync('''
+د آرشیف چټک مدیر — د ازموینې نمونه آرشیف
+=========================================
+
+دا یو **فرضي** آرشیف دی چې د پروګرام د ازموینې لپاره جوړ شوی.
+هیڅ ریښتینې ډیټا پکې نشته — ټول نومونه، پېښې او اشخاص جوړ شوي دي.
+
+څه پکې دي؟
+-----------
+  ${n(count).padLeft(7)}   پیښې (هره یوه خپل فولډر لري)
+  ${n(totalAtt).padLeft(7)}   ضمیمې (ریښتیني انځور، ویډیو، غږ، PDF، CSV، متن)
+  ${n(years.length).padLeft(7)}   کلونه (${PashtoDigits.to(years.first.toString())} — ${PashtoDigits.to(years.last.toString())} هجري لمریز)
+
+د یوې پیښې جوړښت
+------------------
+  1405/سنبله/13/د کابل د راپور پېښه 1/
+      metadata.json    ← یوازې د فلټر ډګرونه (~۱KB، یوه کرښه)
+      content.json     ← د پاڼې محتوا — بلاکونه او ضمیمې
+      index.html       ← ښکلې پاڼه (د لومړیو ${n(htmlCount)} پیښو لپاره)
+      attachments/     ← ریښتیني فایلونه
+
+  _arvitch/fonts/      ← د وزیرمتن فونټ (پروګرام یې پخپله کاروي)
+
+ولې دوه JSON فایله؟
+--------------------
+د **لټون** پر مهال پروګرام یوازې `metadata.json` لولي — هغه کوچنی دی،
+نو د زرګونو پیښو سکن په څو ثانیو کې پای ته رسیږي. `content.json`
+یوازې هغه وخت لوستل کیږي چې تاسو پیښه پرانیزئ.
+
+څنګه یې وازمویئ؟
+-----------------
+  ۱. دا ZIP یو ځای راوباسئ، بېلګه:  D:\\Arvitch-Sample
+  ۲. پروګرام وچلوئ او همدا فولډر د آرشیف په توګه وټاکئ
+  ۳. پروګرام به یې سکن کړي (~۲–۳ ثانیې) او بیا لټون وکړئ:
+
+     • «زلزله» یا «کندهار» ولیکئ         → بشپړ متن لټون
+     • د درجې، رنګ او کټګورۍ فلټرونه     → د Adobe Bridge په څېر
+     • د نېټې سلسله (شمسي/قمري/میلادي)   → درې واړه تقویمونه
+     • یوه پیښه ووهئ                     → پریویو او ایډیټر
+
+نوټونه
+-------
+• ضمیمې قصداً ډېرې کوچنۍ دي (۱–۴ KB) ترڅو ډانلوډ سپک وي.
+  ستاسو په ریښتیني آرشیف کې به ویډیوګانې سلګونه MB وي — خو دا
+  د لټون پر سرعت **هیڅ اغېز نه لري**، ځکه پروګرام د لټون پر مهال
+  یوازې metadata.json لولي، نه مېډیا.
+
+• `index.html` یوازې د لومړیو ${n(htmlCount)} پیښو لپاره جوړ شوی، ترڅو ZIP
+  کوچنی پاتې شي. پروګرام یې د هرې پیښې د ثبت پر مهال پخپله بیا جوړوي.
+
+• د پروګرام دننه پریویو له `content.json` څخه کار کوي، نو د ټولو
+  ${n(count)} پیښو پریویو کار کوي — آن هغو چې index.html نه لري.
+''');
+
     print('EVENTS=$count ATTACHMENTS=$totalAtt BYTES=$totalBytes');
-    print('YEARS=${(byYear.keys.toList()..sort()).join(",")}');
+    print('YEARS=${years.join(",")}');
   }, timeout: const Timeout(Duration(minutes: 30)));
+}
+
+/// ۳۰۰۰ → «۳,۰۰۰»
+String _thousands(int v) {
+  final s = '$v';
+  final b = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
+    b.write(s[i]);
+  }
+  return b.toString();
 }

@@ -32,8 +32,20 @@ class AppTokens {
   ///
   /// **صفر نه دی** — لږ ځنډ حرکت ته ژوند ورکوي. خو ټول لیست باید
   /// تر `staggerCap` پورې بشپړ شي، هرڅومره توکي چې ولري.
-  static const Duration stagger = Duration(milliseconds: 14);
-  static const Duration staggerCap = Duration(milliseconds: 120);
+  static const Duration stagger = Duration(milliseconds: 12);
+  static const Duration staggerCap = Duration(milliseconds: 84);
+
+  /// **د پاڼې د بدلون وخت** — سایډبار کې کلیک څخه تر نوې پاڼې پورې.
+  ///
+  /// دا باید تر ټولو لنډ وي، ځکه دوه انیمیشنې پرله‌پسې پیښیږي:
+  /// لومړی پاڼه بدلیږي (`pageSwap`)، بیا د پاڼې توکي راځي
+  /// (`enter` + `staggerFor`). پخوا دا زنځیر ۱۷۰+۱۲۰+۲۴۰ = ۵۳۰ms و،
+  /// او کاروونکي ته «نږدې یوه ثانیه» ښکارېده. اوس ۹۰+۸۴+۱۶۰ = ۳۳۴ms
+  /// دی، او لومړي پیکسلونه په ~۹۰ms کې ښکاري.
+  static const Duration pageSwap = Duration(milliseconds: 90);
+
+  /// د یوه توکي د راښکاره کېدو وخت (`FadeSlideIn`).
+  static const Duration enter = Duration(milliseconds: 160);
 
   /// د `i` شمېرې توکي لپاره ځنډ — تل تر `staggerCap` لاندې.
   static Duration staggerFor(int i) {
