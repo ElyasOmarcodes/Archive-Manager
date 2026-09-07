@@ -16,10 +16,18 @@ import '../../widgets/common.dart';
 /// انځورونه فول‌سکرین کوي، ویډیو/غږ پلې کوي او نور فایلونه د
 /// «په بل پروګرام کې پرانیزه» له لارې خلاصوي.
 class PreviewPage extends StatelessWidget {
-  const PreviewPage({super.key, required this.event, required this.onBack});
+  const PreviewPage({
+    super.key,
+    required this.event,
+    required this.onBack,
+    this.onEdit,
+  });
 
   final EventMetadata event;
   final VoidCallback onBack;
+
+  /// د «ایډیټ» تڼۍ — پیښه د طراحۍ پاڼې ته وړي.
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +49,10 @@ class PreviewPage extends StatelessWidget {
               // په تنګو کچو کې د متن لرونکې تڼۍ آیکن ته اوړي، نو بار
               // هیڅکله بهر نه لویږي.
               // ~۵۱۰px د بشپړو تڼیو لپاره پکار دي؛ لږ ډېر ځای پرېږدو.
-              final wide = c.maxWidth >= 660;
+              // د «ایډیټ» تڼۍ زیاتېدو سره ټولبار ~۴۰px پسې اوږد شو،
+              // نو د بشپړو لیبلونو پوله لوړه شوه — ګنې پر ۱۰۲۴px
+              // سکرین کې بهر لوېده.
+              final wide = c.maxWidth >= 780;
               return Row(
                 children: [
                   IconButton(
@@ -67,6 +78,22 @@ class PreviewPage extends StatelessWidget {
                   // دلته `Flexible` نه کاروو: هغه به د `Spacer` سره د
                   // پاتې ځای پر سر سیالي کوله او تڼۍ به یې راتنګوله.
                   // پرځای یې د `wide` له مخې بڼه بدلوو.
+                  // ── ایډیټ ──
+                  if (onEdit != null) ...[
+                    if (wide)
+                      FilledButton.icon(
+                        onPressed: onEdit,
+                        icon: const Icon(Icons.edit_rounded, size: 17),
+                        label: const Text('ایډیټ'),
+                      )
+                    else
+                      IconButton.filled(
+                        tooltip: 'ایډیټ',
+                        onPressed: onEdit,
+                        icon: const Icon(Icons.edit_rounded, size: 19),
+                      ),
+                    const SizedBox(width: AppTokens.s8),
+                  ],
                   _OpenWithButton(folder: event.folderPath, compact: !wide),
                   const SizedBox(width: AppTokens.s8),
                   if (wide)

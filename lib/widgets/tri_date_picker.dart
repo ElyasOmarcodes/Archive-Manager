@@ -381,19 +381,35 @@ Future<TriDate?> showTriDatePicker(BuildContext context, TriDate initial) {
           content: SizedBox(
             width: 360,
             child: SingleChildScrollView(
-              child: TriDatePicker(
-                value: picked,
-                onChanged: (d) => setLocal(() => picked = d),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TriDatePicker(
+                    value: picked,
+                    onChanged: (d) => setLocal(() => picked = d),
+                  ),
+                  const SizedBox(height: AppTokens.s8),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: () => setLocal(() => picked = TriDate.now()),
+                      icon: const Icon(Icons.today_rounded, size: 17),
+                      label: const Text('نن'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          // **پام:** دلته `Spacer` مه کاروئ.
+          //
+          // `AlertDialog.actions` د `OverflowBar` په واسطه رسمیږي، او
+          // هغه Flex نه دی — نو `Spacer` (چې `Expanded` دی) هلته ناسم
+          // دی. پایله یې دا وه چې د ډایلوګ **بدنه بیخي نه رسمېده**:
+          // سرلیک او تڼۍ راتلې، خو تقویم نه — کاروونکي ته یو جام شوی
+          // ډایلوګ ښکارېده. د «نن» تڼۍ اوس د بدنې دننه ده.
           actions: [
-            TextButton(
-              onPressed: () =>
-                  setLocal(() => picked = TriDate.now()),
-              child: const Text('نن'),
-            ),
-            const Spacer(),
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('لغوه')),

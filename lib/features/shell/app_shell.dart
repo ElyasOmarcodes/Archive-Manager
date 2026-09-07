@@ -8,7 +8,6 @@ import '../../data/repository/app_state.dart';
 import '../../widgets/common.dart';
 import '../dashboard/dashboard_page.dart';
 import '../editor/event_editor_page.dart';
-import '../editor/new_event_dialog.dart';
 import '../events/events_page.dart';
 import '../explorer/explorer_page.dart';
 import '../../data/models/models.dart';
@@ -40,10 +39,7 @@ class AppShell extends StatelessWidget {
       // ښي لور ته ځي.
       body: Row(
         children: [
-          AppSidebar(
-            onNewEvent: () => showNewEventDialog(context),
-            forceCollapsed: forceCollapsed,
-          ),
+          AppSidebar(forceCollapsed: forceCollapsed),
           Expanded(
             child: Column(
               children: [
@@ -125,7 +121,12 @@ class _TopBarState extends State<_TopBar> {
       child: LayoutBuilder(builder: (context, c) {
         // د لټون بکس د پاتې ځای مطابق کوچنی کیږي، خو له ۱۶۰px نه
         // ښکته نه ځي — نو په هیڅ کچه کې بهر نه لویږي.
-        final reserved = 150 + (s.isDemo ? 120 : 0) + (s.scan != null ? 190 : 0);
+        //
+        // **پام:** دلته `s.scan` مه ګډوئ. پخوا د سکن پر مهال دا
+        // عرض کوچنی کېده او د سکن اندیکېټر یې د `Spacer` ځای نیوه —
+        // نو د بیا‌سکن او تیم ایکنونه له خپل ځایه ښوېدل. اوس د
+        // ټولبار جوړښت د سکن له حالت څخه بشپړ خپلواک دی.
+        final reserved = 150 + (s.isDemo ? 120 : 0);
         final searchW = (c.maxWidth - reserved).clamp(160.0, 380.0);
         return Row(
         children: [
@@ -145,14 +146,32 @@ class _TopBarState extends State<_TopBar> {
             },
           ),
           const SizedBox(width: AppTokens.s12),
-          if (s.scan != null)
-            Flexible(child: _ScanIndicator(progress: s.scan!)),
-          const Spacer(),
+          // د سکن اندیکېټر د تش ځای **دننه** ژوند کوي — نه د هغه
+          // ترڅنګ. نو کله چې راځي یا ځي، هیڅ نور شی نه خوځیږي.
+          Expanded(
+            child: s.scan == null
+                ? const SizedBox.shrink()
+                : Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: _ScanIndicator(progress: s.scan!),
+                  ),
+          ),
           if (s.isDemo && c.maxWidth > 720) const _DemoBadge(),
           const SizedBox(width: AppTokens.s8),
+          // د سکن پر مهال همدې تڼۍ کې یو څرخېدونکی ښکاري — نو
+          // ایکن خپل ځای نه بایلي، یوازې بڼه یې بدلیږي.
           IconButton(
-            tooltip: 'آرشیف بیا سکن کړه',
-            icon: const Icon(Icons.refresh_rounded, size: 20),
+            tooltip: s.scan != null ? 'سکن روان دی…' : 'آرشیف بیا سکن کړه',
+            icon: s.scan != null
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: Padding(
+                      padding: EdgeInsets.all(2),
+                      child: CircularProgressIndicator(strokeWidth: 2.2),
+                    ),
+                  )
+                : const Icon(Icons.refresh_rounded, size: 20),
             onPressed: s.scan != null ? null : s.rescanArchive,
           ),
           const _ThemeToggle(),

@@ -210,12 +210,23 @@ class _Grid extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     return LayoutBuilder(builder: (context, c) {
-      final target = switch (s.settings.gridSize) {
-        1 => 480.0,
-        2 => 380.0,
-        _ => 300.0,
+      // **ولې مستقیم د عرض له مخې نه؟**
+      //
+      // پخوا هر اندازې یو «هدفي عرض» درلود او کالمونه یې
+      // `floor(width / target)` وو. خو `floor` دوه نږدې اندازې
+      // یوې پایلې ته ټیټوي: پر ۱۱۰۰px عرض، لوی (۴۸۰) او متوسط
+      // (۳۸۰) دواړه ۲ کالمه ورکول — نو په عمل کې یو شان ښکارېدل.
+      //
+      // اوس د متوسط کالمونه حسابوو، بیا لوی یو کم او کوچنی یو
+      // زیات — نو درې واړه تل ریښتیني توپیر لري.
+      final base = (c.maxWidth / 360).floor().clamp(1, 6);
+      final cols = switch (s.settings.gridSize) {
+        1 => (base - 1).clamp(1, 6), // لوی
+        2 => base, //                   متوسط
+        _ => (base + 1).clamp(1, 8), // کوچنی
       };
-      final cols = (c.maxWidth / target).floor().clamp(1, 6);
+      // کوچني کارتونه لنډ محتوا ښیي — نو ریښتیا «کوچني» وي.
+      final compact = s.settings.gridSize == 3;
       const gap = AppTokens.s16;
       final w = (c.maxWidth - AppTokens.s24 * 2 - gap * (cols - 1)) / cols;
 
@@ -227,10 +238,19 @@ class _Grid extends StatelessWidget {
       // پرانیستل د پایلو له شمېر څخه خپلواک دی.
       final rows = (s.events.length + cols - 1) ~/ cols;
 
-      return ListView.builder(
+      return NotificationListener<ScrollNotification>(
+        // د لیست پای ته نږدې شو → راتلونکې پاڼه راوړه.
+        onNotification: (n) {
+          if (n.metrics.pixels > n.metrics.maxScrollExtent - 600) {
+            s.loadMore();
+          }
+          return false;
+        },
+        child: ListView.builder(
         padding: const EdgeInsets.all(AppTokens.s24),
-        itemCount: rows,
+        itemCount: rows + (s.hasMore ? 1 : 0),
         itemBuilder: (context, r) {
+          if (r == rows) return const _LoadingMoreRow();
           final start = r * cols;
           final end = (start + cols).clamp(0, s.events.length);
           return Padding(
@@ -246,7 +266,7 @@ class _Grid extends StatelessWidget {
                       // ځنډ یوازې د لومړۍ لیدنې لپاره — د سکرول پر
                       // مهال کارت باید سمدستي راښکاره شي.
                       delay: AppTokens.staggerFor(i - start),
-                      child: EventCard(event: s.events[i]),
+                      child: EventCard(event: s.events[i], compact: compact),
                     ),
                   ),
                 ],
@@ -254,8 +274,42 @@ class _Grid extends StatelessWidget {
             ),
           );
         },
+      ),
       );
     });
+  }
+}
+
+/// د لیست په پای کې — «نورې راځي».
+class _LoadingMoreRow extends StatelessWidget {
+  const _LoadingMoreRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppTokens.s24),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 15,
+              height: 15,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: cs.primary),
+            ),
+            const SizedBox(width: AppTokens.s12),
+            Text(
+              '${PashtoDigits.to(s.events.length)} له '
+              '${PashtoDigits.to(s.facets.total)} ښودل شوې…',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

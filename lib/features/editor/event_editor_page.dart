@@ -178,7 +178,10 @@ class _EventEditorPageState extends State<EventEditorPage> {
     if (s.previewMode) {
       return PreviewPage(
         event: _event,
-        onBack: () => s.setPreview(false),
+        // که پیښه له کارت څخه مستقیم په پریویو کې پرانیستل شوې وه،
+        // «بېرته» باید د پیښو پاڼې ته ولاړه شي — نه ایډیټ ته.
+        onBack: () => s.previewEntry ? s.closeEditor() : s.setPreview(false),
+        onEdit: () => s.setPreview(false),
       );
     }
 

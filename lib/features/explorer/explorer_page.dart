@@ -364,6 +364,10 @@ class _ExplorerPageState extends State<ExplorerPage> {
         focusNode: _focus,
         autofocus: true,
         child: Column(
+          // **stretch اړین دی.** د `Column` ډیفالټ `center` دی، نو د
+          // ټولبار کانټینر یوازې د خپلې محتوا هومره عرض نیوه او په
+          // منځ کې راټول ښکارېده. اوس د وینډو بشپړ عرض نیسي.
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _toolbar(context),
             _pathBar(context),
@@ -851,9 +855,23 @@ class _ExplorerPageState extends State<ExplorerPage> {
     final s = context.read<AppState>();
     final messenger = ScaffoldMessenger.of(context);
 
+    // **پام:** دلته `RelativeRect.fromLTRB(dx, dy, dx, dy)` مه کاروئ.
+    //
+    // `RelativeRect` له **هرې څنډې** فاصلې اخلي — درېیم ارزښت یې «له
+    // ښي څنډې څومره لرې» معنا لري، نه «د x مختصات». نو په ۲۵۶۰px
+    // کړکۍ کې پر x=۸۰۰ رایټ‌کلیک منو له ښي څنډې ۸۰۰px لرې غورځوله —
+    // یعنې د کلیک ځای څخه لرې، د فولډرونو د ونې ترڅنګ.
+    //
+    // سمه لار: د ماوس نقطه د اوورلې د اندازې په نسبت وسنجول شي.
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+
     showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(pos.dx, pos.dy, 0, 0),
+        Offset.zero & overlay.size,
+      ),
       items: [
         PopupMenuItem(
             value: 'open',

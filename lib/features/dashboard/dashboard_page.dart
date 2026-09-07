@@ -658,6 +658,21 @@ class _WeeklyChart extends StatelessWidget {
                 minY: 0,
                 alignment: BarChartAlignment.spaceAround,
                 barTouchData: BarTouchData(
+                  // پر یوې ورځې کلیک → د پیښو پاڼه، فیلټر یې پر
+                  // هماغه یوې ورځې تړلی.
+                  touchCallback: (event, resp) {
+                    if (!event.isInterestedForInteractions) return;
+                    final spot = resp?.spot;
+                    if (spot == null) return;
+                    final i = spot.touchedBarGroupIndex;
+                    if (i < 0 || i > 6) return;
+                    final day = today.jdn - (6 - i);
+                    final st = context.read<AppState>();
+                    st.go(AppPage.events);
+                    st.setQuery(st.query
+                        .cleared()
+                        .copyWith(fromJdn: day, toJdn: day));
+                  },
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipColor: (_) => cs.inverseSurface,
                     getTooltipItem: (g, gi, r, ri) => BarTooltipItem(

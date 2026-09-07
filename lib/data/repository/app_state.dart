@@ -14,7 +14,9 @@ import '../platform/demo_backend.dart';
 /// کاروونکی یې په یوه نظر وپېژني.
 enum AppPage {
   dashboard('ډاشبورډ', Icons.space_dashboard_rounded, TileTone.blue),
-  events('پیښې', Icons.auto_awesome_mosaic_rounded, TileTone.orange),
+  // د ډاشبورډ ایکن هم د پینلونو ګریډ و — دواړه یو شان ښکارېدل.
+  // «پیښې» اوس د خبري پیښې خپل ایکن لري.
+  events('پیښې', Icons.newspaper_rounded, TileTone.orange),
   explorer('اکسپلورر', Icons.folder_open_rounded, TileTone.green),
   keywords('کلیدي کلمې', Icons.sell_rounded, TileTone.teal),
   categories('کټګورۍ', Icons.category_rounded, TileTone.pink),
@@ -147,11 +149,26 @@ class AppState extends ChangeNotifier {
   //  تازه کول
   // ═══════════════════════════════════════════════════════
 
+  /// د یوې پاڼې کچه — څومره پیښې یو ځل راوړل کیږي.
+  ///
+  /// **ولې محدودیت شته؟** ځکه چې د ۵۰,۰۰۰ پیښو ټول لیست راوړل
+  /// یعنې ۵۰,۰۰۰ ځله JSON پارس کول (~۸ ثانیې). خو محدودیت یوازې
+  /// د **راوړلو** لپاره دی، نه د **ترتیب** لپاره — ترتیب د
+  /// ډیټابیس دننه پر ټولو پایلو پلې کیږي، بیا یې لومړۍ پاڼه راځي.
+  /// کله چې کاروونکی ښکته سکرول کړي، راتلونکې پاڼه پخپله راځي.
+  static const int pageSize = 200;
+
+  /// آیا لا نورې پایلې پاتې دي؟
+  bool get hasMore => events.length < facets.total;
+
+  /// د راتلونکې پاڼې بارول روان دي؟
+  bool loadingMore = false;
+
   Future<void> refresh() async {
     loading = true;
     notifyListeners();
     stats = await backend.stats();
-    events = await backend.search(query);
+    events = await backend.search(query.copyWith(limit: pageSize, offset: 0));
     facets = await backend.facets(query);
     final root = settings.archiveRoot;
     if (root != null) disk = await backend.diskSpace(root);
@@ -159,8 +176,27 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// **راتلونکې پاڼه** — کله چې کاروونکی د لیست پای ته نږدې شي.
+  ///
+  /// ترتیب او فیلټر هماغه دي، یوازې `offset` مخته ځي — نو د لیست
+  /// پرله‌پسې والی نه ماتیږي.
+  Future<void> loadMore() async {
+    if (loadingMore || !hasMore) return;
+    loadingMore = true;
+    notifyListeners();
+    final next = await backend
+        .search(query.copyWith(limit: pageSize, offset: events.length));
+    // د بارولو پر مهال کاروونکي فیلټر بدل کړی وي — پایله وغورځوه.
+    if (loadingMore) {
+      events = [...events, ...next];
+      loadingMore = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> setQuery(EventQuery q) async {
     query = q;
+    loadingMore = false;
     await refresh();
   }
 
@@ -203,9 +239,17 @@ class AppState extends ChangeNotifier {
 
   /// پیښه پرانیزي. د پاڼې بدلون سمدستي کیږي — محتوا وروسته راځي،
   /// نو په سایډبار او کارتونو کلیک هېڅکله نه ځنډیږي.
+  /// پیښه مستقیم په **پریویو** کې پرانیستل شوې (له کارت څخه)؟
+  ///
+  /// که هو، د پریویو «بېرته» تڼۍ باید سمدستي د پیښو پاڼې ته ولاړه
+  /// شي — نه ایډیټ حالت ته. پخوا داسې و چې کاروونکی له پریویو
+  /// څخه ایډیټ ته لوېده او دویم ځل یې «بېرته» وهله.
+  bool previewEntry = false;
+
   void openEditor(EventMetadata e, {bool preview = false}) {
     editing = e;
     previewMode = preview;
+    previewEntry = preview;
     if (e.contentLoaded) {
       editorLoading = false;
       notifyListeners();
@@ -224,6 +268,7 @@ class AppState extends ChangeNotifier {
     editing = null;
     editorLoading = false;
     previewMode = false;
+    previewEntry = false;
     notifyListeners();
     refresh();
   }

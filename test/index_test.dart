@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:archive_manager/core/date/pashto_calendar.dart';
 import 'package:archive_manager/core/theme/tokens.dart';
@@ -27,6 +29,7 @@ EventMetadata mk(String id, String title, TriDate d,
 }
 
 void main() {
+  _paging();
   late IndexDb db;
   setUp(() {
     db = IndexDb.openMemory();
@@ -126,5 +129,83 @@ void main() {
       expect(() => db.search(EventQuery(text: t)), returnsNormally,
           reason: 'input: $t');
     }
+  });
+}
+
+/// **د ترتیب او پاڼه‌بندۍ ازموینه.**
+///
+/// دا باګ کاروونکي وموند: د «نوم — الفبا» ترتیب یوازې د «ب» پیښې
+/// راوړلې، او برعکس یې یوازې د «ک». علت دا و چې د لټون پایله په
+/// ۵۰۰ محدوده وه، نو کاروونکی یوازې د ترتیب شوي لیست **یوه برخه**
+/// لیده — او هغه یې د ناقص لیست په توګه پېژندله.
+///
+/// دلته ثابتوو چې پاڼه‌بندي د ترتیب پرله‌پسې والی نه ماتوي: د ټولو
+/// پاڼو یوځای کول باید دقیقاً هغه لیست راوړي چې بې‌محدودیته راځي.
+void _paging() {
+  group('ترتیب + پاڼه‌بندي', () {
+    late IndexDb db;
+    const n = 1200;
+
+    setUp(() {
+      db = IndexDb.openMemory();
+      final rnd = Random(7);
+      const letters = 'ابپتجحدرسشکگلمنو';
+      db.upsertAll([
+        for (var i = 0; i < n; i++)
+          EventMetadata(
+            id: 'p-$i',
+            title: '${letters[rnd.nextInt(letters.length)]}'
+                '${letters[rnd.nextInt(letters.length)]} پیښه $i',
+            folderPath: '/x/$i',
+            date: TriDate.fromJdn(2450000 + rnd.nextInt(4000)),
+            rating: rnd.nextInt(6),
+          )
+      ]);
+    });
+
+    tearDown(() => db.dispose());
+
+    /// ټولې پاڼې یوځای — لکه چې کاروونکی تر پایه سکرول کړي.
+    List<EventMetadata> allPages(SortField sort, {int page = 200}) {
+      final out = <EventMetadata>[];
+      while (out.length < n) {
+        final chunk = db.search(
+            EventQuery(sort: sort, limit: page, offset: out.length));
+        if (chunk.isEmpty) break;
+        out.addAll(chunk);
+      }
+      return out;
+    }
+
+    for (final sort in SortField.values) {
+      test('${sort.name}: پاڼه‌بندي ترتیب نه ماتوي', () {
+        final paged = allPages(sort);
+        final whole = db.search(EventQuery(sort: sort, limit: n * 2));
+
+        expect(paged.length, n, reason: 'ټولې پیښې باید راشي');
+        expect(paged.map((e) => e.id).toList(),
+            whole.map((e) => e.id).toList(),
+            reason: 'د پاڼو یوځای کول باید بشپړ لیست ورکړي');
+      });
+    }
+
+    test('د درجې ترتیب ټولې درجې راوړي — نه یوازې لوړې', () {
+      final desc = allPages(SortField.ratingDesc);
+      expect(desc.map((e) => e.rating).toSet(), {0, 1, 2, 3, 4, 5},
+          reason: 'بې‌ستوري پیښې هم باید په لیست کې وي');
+      // او ترتیب ریښتیا نزولي دی
+      for (var i = 1; i < desc.length; i++) {
+        expect(desc[i].rating, lessThanOrEqualTo(desc[i - 1].rating));
+      }
+    });
+
+    test('د نوم ترتیب له لومړي تر وروستي حرف ځي', () {
+      final asc = allPages(SortField.titleAsc);
+      final titles = asc.map((e) => e.title).toList();
+      expect(titles, orderedEquals(List.of(titles)..sort()));
+      // د لیست لومړی او وروستی باید مختلف حرف ولري
+      expect(titles.first[0], isNot(titles.last[0]),
+          reason: 'ټول لیست باید راشي، نه یوازې د یوه حرف برخه');
+    });
   });
 }

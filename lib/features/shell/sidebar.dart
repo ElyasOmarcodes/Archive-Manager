@@ -14,11 +14,9 @@ import '../../widgets/common.dart';
 class AppSidebar extends StatefulWidget {
   const AppSidebar({
     super.key,
-    required this.onNewEvent,
     this.forceCollapsed = false,
   });
 
-  final VoidCallback onNewEvent;
 
   /// کله چې کړکۍ تنګه شي، سایډبار پخپله راټولیږي.
   final bool forceCollapsed;
@@ -99,11 +97,9 @@ class _AppSidebarState extends State<AppSidebar>
             child: Column(
               children: [
                 _Brand(t: t, onToggle: s.toggleSidebar, locked: widget.forceCollapsed),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppTokens.s12, AppTokens.s12, AppTokens.s12, AppTokens.s4),
-                  child: _NewEventButton(t: t, onTap: widget.onNewEvent),
-                ),
+                // د «نوې پیښه» تڼۍ دلته نه ده — په ډاشبورډ، د پیښو
+                // پاڼه او اکسپلورر کې شته، نو سایډبار یوازې ناوبري ده.
+                const SizedBox(height: AppTokens.s8),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.symmetric(
@@ -585,53 +581,6 @@ class _CountBadge extends StatelessWidget {
       b.write(s[i]);
     }
     return b.toString();
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  د نوې پیښې تڼۍ
-// ═══════════════════════════════════════════════════════════
-
-class _NewEventButton extends StatelessWidget {
-  const _NewEventButton({required this.t, required this.onTap});
-  final double t;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: t < 0.5 ? 'نوې پیښه' : '',
-      child: SizedBox(
-        width: double.infinity,
-        height: 44,
-        child: FilledButton(
-          onPressed: onTap,
-          style: FilledButton.styleFrom(
-            padding: EdgeInsets.zero,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.add_rounded, size: 20),
-              Flexible(
-                child: _Reveal(
-                  t: t,
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: AppTokens.s8),
-                    child: Text('نوې پیښه',
-                        maxLines: 1,
-                        softWrap: false,
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
