@@ -10,6 +10,7 @@ import 'data/platform/backend.dart';
 import 'data/platform/demo_backend.dart';
 import 'data/repository/app_state.dart';
 import 'features/onboarding/boot_gate.dart';
+import 'features/shell/title_bar.dart';
 
 // د ریښتیني بک‌اینډ شرطي واردول — په ویب کې `dart:io` نه شته،
 // نو هلته یوازې د نندارې نسخه جوړیږي.
@@ -133,9 +134,19 @@ class ArchiveApp extends StatelessWidget {
       ],
       locale: const Locale('ps'),
       supportedLocales: const [Locale('ps'), Locale('fa'), Locale('en')],
+      // **ټایټل بار د ټول پروګرام پر سر.**
+      //
+      // دلته یې ږدو، نه د shell دننه — نو د پیل پاڼو، د مسیر
+      // ټاکلو، او د ورکې لارې پاڼې پر سر هم وي. ډایلوګونه یې
+      // پوښي، ځکه هغه د `Navigator` پورته پوړ کې راځي.
       builder: (context, child) => Directionality(
         textDirection: TextDirection.rtl,
-        child: child ?? const SizedBox.shrink(),
+        child: Column(
+          children: [
+            const AppTitleBar(),
+            Expanded(child: child ?? const SizedBox.shrink()),
+          ],
+        ),
       ),
       home: homeOverride ?? const BootGate(),
     );

@@ -33,11 +33,14 @@ class AppShell extends StatelessWidget {
 
   Widget _buildShell(BuildContext context, AppState s,
       {required bool forceCollapsed}) {
-    return Scaffold(
-      // پروګرام پښتو (RTL) دی، نو سایډبار ښي طرف ته وي — همدا د
-      // ښي‌څخه‌کیڼ لوستلو طبیعي لور دی. په RTL کې د Row لومړی اولاد
-      // ښي لور ته ځي.
-      body: Row(
+    return Scaffold(body: _shellBody(context, s, forceCollapsed));
+  }
+
+  Widget _shellBody(BuildContext context, AppState s, bool forceCollapsed) {
+    // پروګرام پښتو (RTL) دی، نو سایډبار ښي طرف ته وي — همدا د
+    // ښي‌څخه‌کیڼ لوستلو طبیعي لور دی. په RTL کې د Row لومړی اولاد
+    // ښي لور ته ځي.
+    return Row(
         children: [
           AppSidebar(forceCollapsed: forceCollapsed),
           Expanded(
@@ -58,7 +61,6 @@ class AppShell extends StatelessWidget {
             ),
           ),
         ],
-      ),
     );
   }
 
