@@ -237,7 +237,7 @@ class _Brand extends StatelessWidget {
                             color: cs.onSurface,
                             height: 1.3)),
                     Text(
-                      'v1.0.2 · ${driveLabel(s.settings.archiveRoot)}',
+                      'v1.1.0 · ${driveLabel(s.settings.archiveRoot)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,

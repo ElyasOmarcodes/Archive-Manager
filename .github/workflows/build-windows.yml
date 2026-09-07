@@ -22,7 +22,8 @@ permissions:
 env:
   FLUTTER_VERSION: '3.47.2'
   APP_NAME: 'ArchiveManager'
-  APP_VERSION: '1.0.2'
+  APP_VERSION: '1.1.0'
+  RELEASE_TAG: 'v1.1.0'
 
 jobs:
   # ═══════════════════════════════════════════════════════════
@@ -170,16 +171,18 @@ jobs:
           mkdir -p dist
           cp "windows/launcher/${APP_NAME}.exe" "dist/${APP_NAME}.exe"
           cd dist
-          raw=$(stat -c%s "${APP_NAME}.exe")
+          raw=$(wc -c < "${APP_NAME}.exe")
           xz -9 --extreme --threads=0 --keep "${APP_NAME}.exe"
-          zip=$(stat -c%s "${APP_NAME}.exe.xz")
+          small=$(wc -c < "${APP_NAME}.exe.xz")
+          # ساده bash حساب — `bc` په وینډوز bash کې د باور وړ نه و
           echo "─────────────────────────────────"
-          printf 'exe:     %.1f MB\n' "$(echo "$raw/1048576" | bc -l)"
-          printf 'exe.xz:  %.1f MB  (%.1f%%)\n' \
-            "$(echo "$zip/1048576" | bc -l)" \
-            "$(echo "100*$zip/$raw" | bc -l)"
+          echo "exe:     $((raw / 1048576)) MB   ($raw bytes)"
+          echo "exe.xz:  $((small / 1048576)) MB   ($((100 * small / raw))% د خام)"
           echo "─────────────────────────────────"
           rm -f "${APP_NAME}.exe"
+          # د ریلیز پړاو ته یې ورکوو
+          echo "EXE_BYTES=$raw" >> "$GITHUB_ENV"
+          echo "XZ_BYTES=$small" >> "$GITHUB_ENV"
 
       - name: د خروجي اپلوډ
         uses: actions/upload-artifact@v4
@@ -190,32 +193,73 @@ jobs:
           compression-level: 0
           retention-days: 90
 
-      # ── که ټګ وي یا په لاسي توګه وغوښتل شي، ریلیز جوړوو ──
-      - name: ریلیز جوړول
-        if: startsWith(github.ref, 'refs/tags/v') || inputs.release
+      # ═══════════════════════════════════════════════════════
+      #  ریلیز — زاړه پاکوي، نوی خپروي
+      # ═══════════════════════════════════════════════════════
+      #
+      # کاروونکي وغوښتل چې یوازې **وروستی** خروجي په Releases کې
+      # وي. نو لومړی هغه ریلیزونه پاکوو چې زاړه دي (د اوسني ټګ
+      # پرته)، بیا نوی جوړوو.
+      #
+      # دا **idempotent** دی: تر لومړۍ چلونې روسته یوازې اوسنی
+      # ریلیز پاتې وي، نو بیا هیڅ نه پاکیږي.
+      - name: زاړه ریلیزونه پاکول
+        if: github.ref == 'refs/heads/claude/archive-quick-manager-4pdyru' || startsWith(github.ref, 'refs/tags/v') || inputs.release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          keep="${{ env.RELEASE_TAG }}"
+          echo "ساتل کیږي: $keep"
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
+            --json tagName --jq '.[].tagName' | while read -r tag; do
+            [ -z "$tag" ] && continue
+            if [ "$tag" != "$keep" ]; then
+              echo "  ✗ پاکیږي: $tag"
+              gh release delete "$tag" --repo "$GITHUB_REPOSITORY" \
+                --cleanup-tag --yes || true
+            fi
+          done
+
+      - name: ریلیز خپرول
+        if: github.ref == 'refs/heads/claude/archive-quick-manager-4pdyru' || startsWith(github.ref, 'refs/tags/v') || inputs.release
         uses: softprops/action-gh-release@v2
         with:
-          # د ټګ له پش څخه راځي، یا د لاسي چلونې له ان‌پټ څخه
-          tag_name: >-
-            ${{ startsWith(github.ref, 'refs/tags/')
-                && github.ref_name || inputs.tag }}
-          name: >-
-            د آرشیف چټک مدیر —
-            ${{ startsWith(github.ref, 'refs/tags/')
-                && github.ref_name || inputs.tag }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: د آرشیف چټک مدیر — ${{ env.RELEASE_TAG }}
           files: dist/${{ env.APP_NAME }}.exe.xz
-          generate_release_notes: true
+          make_latest: true
           body: |
             ## د آرشیف چټک مدیر
 
-            **د ډانلوډ او چلولو لار:**
-            ۱. `${{ env.APP_NAME }}.exe.xz` ډانلوډ کړئ
-            ۲. د [7-Zip](https://www.7-zip.org/) په مرسته یې راوباسئ
-               — یو ځل بس دی
+            **یو واحد فایل** — نصبولو ته اړتیا نشته.
+
+            ### د ډانلوډ او چلولو لار
+
+            ۱. لاندې `${{ env.APP_NAME }}.exe.xz` ډانلوډ کړئ
+            ۲. راوباسئ یې — یو ځل بس دی:
+
+               ```
+               tar -xf ArchiveManager.exe.xz
+               ```
+
+               (یا د [7-Zip](https://www.7-zip.org/) په مرسته
+               ورباندې دوه ځله کلیک وکړئ)
+
             ۳. `${{ env.APP_NAME }}.exe` چلوئ
 
-            > **یو واحد فایل دی.** ټوله بسته د .exe دننه ده؛ لومړی
-            > ځل ځان ځای پر ځای کوي (څو ثانیې)، له هغه روسته
-            > سمدستي پیلیږي. نصبولو ته اړتیا نشته.
+            > **لومړی ځل** څو ثانیې نیسي — پروګرام ځان
+            > `%LOCALAPPDATA%\Arvitch\` ته ځای پر ځای کوي.
+            > **له هغه روسته** سمدستي پیلیږي.
 
-            سیسټم: وینډوز ۱۰ (۱۸۰۳) یا نوې، ۶۴-bit.
+            ### د ازموینې نمونه آرشیف
+
+            پروګرام پرته له خپلې ډیټا وازمویئ — **۵,۰۰۰ فرضي
+            پیښې**، ۱۲,۴۶۲ ضمیمې، هره پیښه خپله `index.html` لري:
+
+            [`docs/sample/Arvitch-Sample-Archive.tar.xz`](https://github.com/${{ github.repository }}/raw/${{ github.sha }}/docs/sample/Arvitch-Sample-Archive.tar.xz)
+            · ۱.۸ MB (راوتلی: ۲۱۷ MB)
+
+            ### سیسټم
+
+            وینډوز ۱۰ (۱۸۰۳) یا نوې · ۶۴-bit
