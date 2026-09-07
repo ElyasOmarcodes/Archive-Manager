@@ -51,3 +51,9 @@ app.*.map.json
 node_modules/
 package.json
 package-lock.json
+
+# د لانچر بسته — په CI کې جوړیږي
+windows/launcher/payload.zip
+windows/launcher/*.res
+windows/launcher/*.obj
+windows/launcher/*.exe

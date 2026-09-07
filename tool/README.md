@@ -9,12 +9,18 @@
 # ۱) مېډیا حوض (یو ځل بس دی — پخوا جوړ شوی په tool/sample-media کې دی)
 ./tool/make_sample_media.sh tool/sample-media
 
-# ۲) آرشیف جوړول
-MEDIA=tool/sample-media OUT=/tmp/Arvitch-Sample COUNT=3000 HTML=300 \
+# ۲) آرشیف جوړول (HTML=COUNT یعنې هره پیښه خپله پاڼه لري)
+MEDIA=tool/sample-media OUT=/tmp/Arvitch-Sample COUNT=5000 HTML=5000 \
   flutter test tool/make_sample_archive.dart
 
-# ۳) کمپرس
-cd /tmp && zip -r -9 Arvitch-Sample.zip Arvitch-Sample
+# ۳) کمپرس — **tar.xz، نه zip**
+#
+# معیاري ZIP د فایلونو نومونه په CP437 کې ساتي، نو وینډوز پښتو
+# نومونه (سنبله، وږی، …) غلط لولي — «بې‌معنا کرکټر». tar خام
+# بایټونه ساتي، نو UTF-8 نومونه سم پاتې کیږي. xz هم ډېر ښه
+# کمپرس کوي (HTML تکراري دی).
+cd /tmp && tar -cf - Arvitch-Sample | xz -9 --extreme -T0 \
+  > Arvitch-Sample-Archive.tar.xz
 ```
 
 ## متغیرې
@@ -24,7 +30,7 @@ cd /tmp && zip -r -9 Arvitch-Sample.zip Arvitch-Sample
 | `MEDIA` | د مېډیا حوض فولډر | — (اړین) |
 | `OUT` | چېرته جوړ شي | — (اړین) |
 | `COUNT` | د پیښو شمېر | `3000` |
-| `HTML` | څو یې `index.html` هم ولري | `300` |
+| `HTML` | څو یې `index.html` هم ولري | `COUNT` |
 
 ## د پیښې فولډر
 
