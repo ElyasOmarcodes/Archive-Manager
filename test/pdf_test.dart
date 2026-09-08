@@ -254,15 +254,27 @@ void main() {
     expect(pages, greaterThanOrEqualTo(2),
         reason: 'میټاډیټا باید خپله پاڼه ولري');
 
-    // د جدول سرچینه — ټول هغه ډګرونه چې جدول یې ښیي
+    // د جدول سرچینه — یوازې هغه ډګرونه چې د آرشیف لپاره مهم دي
     final rows = EventPdf.metadataRows(e);
     final keys = rows.map((r) => r.key).toList();
-    for (final k in ['id', 'title', 'jdn', 'rating', 'color', 'keywords']) {
+    for (final k in [
+      'د سند شمېره',
+      'سرلیک',
+      'کټګوري',
+      'د ورځې شمېره (JDN)',
+      'درجه',
+      'رنګ ټګ',
+      'کیوردونه',
+      'د پوښۍ مسیر',
+    ]) {
       expect(keys, contains(k), reason: '«$k» باید په جدول کې وي');
     }
-    // اوږد متن پکې نه وي — هغه پخپله د سند په متن کې دی
-    expect(keys, isNot(contains('text')));
-    expect(rows.firstWhere((r) => r.key == 'jdn').value, '${e.date.jdn}');
+    expect(rows.firstWhere((r) => r.key == 'د ورځې شمېره (JDN)').value,
+        '${e.date.jdn}');
+
+    // **د ضمیمو جدول دلته نه دی** — کاروونکي وویل «اخیری پاڼه کې
+    // فقط میټاډیټا وي». د ضمیمو بشپړ لیست د سند په بدنه کې دی.
+    expect(keys.any((k) => k.contains('نسبي مسیر')), isFalse);
   });
 
   test('ZWNJ متن نه ماتوي — «پ‌ښ‌تو» → «پښتو»', () async {
@@ -297,5 +309,107 @@ void main() {
     // د ToUnicode جدول کې باید ZWNJ (U+200C) هیڅ ګلیف ونه نیسي
     expect(raw, isNot(contains('<200C>')),
         reason: 'ZWNJ باید فونټ ته ورنه رسیږي');
+  });
+
+  group('لویه ډیټا اکسپورټ نه ماتوي', () {
+    // کاروونکي راپور کړه: «کله چې زمونږ د پیښې متن اوږد وي، او
+    // ډیټا مو زیاته وي، نو نه pdf صادرولی شي نه هم zip».
+    //
+    // درې بېل علتونه وو:
+    //
+    // ۱. `MultiPage` یوازې هغه ویجټ پر پاڼو ویشي چې **سیده** یې
+    //    اولاد وي او `SpanningWidget` وي. زمونږ پاراګرافونه په
+    //    `Padding` کې تړل شوي وو، نو نه ویشل کېدل:
+    //    «Widget won't fit into the page… (3269)».
+    // ۲. `pw.Text` په ډیفالټ ډول نه ویشل کیږي — `TextOverflow
+    //    .span` پکار دی.
+    // ۳. د جدول یوه کرښه هیڅکله نه ماتیږي. اوږد لنډیز په جدول کې
+    //    د پاڼو بې‌پایه کړۍ جوړوله: «created more than 20 pages».
+
+    String long(int words) =>
+        List.generate(words, (i) => 'د پیښې اوږد متن کلمه${i % 7}').join(' ');
+
+    Future<void> ok(EventMetadata e) async {
+      final bytes = await EventPdf.build(e);
+      expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
+    }
+
+    test('اوږد لنډیز (۴۰۰ کلمې)', () async {
+      await ok(EventMetadata(
+          id: 'a',
+          title: 'اوږده پیښه',
+          folderPath: '/tmp/x',
+          date: TriDate.now(),
+          summary: long(400)));
+    });
+
+    test('اوږد پاراګراف (۸۰۰ کلمې)', () async {
+      await ok(EventMetadata(
+          id: 'b',
+          title: 'اوږده پیښه',
+          folderPath: '/tmp/x',
+          date: TriDate.now(),
+          blocks: [
+            Block(id: '1', kind: BlockKind.paragraph, text: long(800))
+          ]));
+    });
+
+    test('اوږد نقل قول (۶۰۰ کلمې)', () async {
+      await ok(EventMetadata(
+          id: 'c',
+          title: 'اوږده پیښه',
+          folderPath: '/tmp/x',
+          date: TriDate.now(),
+          blocks: [
+            Block(
+                id: '1',
+                kind: BlockKind.quote,
+                text: long(600),
+                author: 'څوک')
+          ]));
+    });
+
+    test('۳۰۰ ضمیمې', () async {
+      await ok(EventMetadata(
+          id: 'd',
+          title: 'ډېرې ضمیمې',
+          folderPath: '/tmp/x',
+          date: TriDate.now(),
+          attachments: [
+            for (var i = 0; i < 300; i++)
+              Attachment(
+                  name: 'file$i.mp4',
+                  relativePath: 'attachments/file$i.mp4',
+                  kind: MediaKind.video,
+                  sizeBytes: 1000 * i),
+          ]));
+    });
+
+    test('۲۰۰ بلاکونه', () async {
+      await ok(EventMetadata(
+          id: 'e',
+          title: 'ډېر بلاکونه',
+          folderPath: '/tmp/x',
+          date: TriDate.now(),
+          blocks: [
+            for (var i = 0; i < 200; i++)
+              Block(id: '$i', kind: BlockKind.paragraph, text: long(30)),
+          ]));
+    });
+
+    test('د میټاډیټا جدول کې اوږد ارزښت لنډیږي', () {
+      // یوه اوږده کرښه د جدول دننه = بې‌پایه کړۍ. نو لنډیږي —
+      // بشپړ متن پخپله د سند په بدنه او په ضمیمه کې دی.
+      final rows = EventPdf.metadataRows(EventMetadata(
+          id: 'f',
+          title: 'x',
+          folderPath: '/tmp/x',
+          date: TriDate.now(),
+          summary: long(400)));
+      for (final r in rows) {
+        expect(r.value.length, lessThanOrEqualTo(240),
+            reason: '«${r.key}» ډېر اوږد دی');
+      }
+    });
   });
 }

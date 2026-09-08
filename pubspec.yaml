@@ -1,7 +1,7 @@
 name: archive_manager
 description: "د آرشیف چټک مدیر — Archive Quick Manager"
 publish_to: 'none'
-version: 1.5.0+1
+version: 1.6.0+1
 
 environment:
   sdk: ^3.13.2
@@ -57,6 +57,8 @@ flutter:
     # (`tool/icon/make_icon.py`). نو د وینډوز ایکن او د پروګرام
     # دننه نښه تل یو شان وي.
     - assets/icon/
+    # د جوړونکي انځور — د تنظیماتو «جوړونکی» ډله کې.
+    - assets/dev/
     - assets/fonts/
     # دا woff2 فایلونه د پروګرام دننه نه کارول کیږي — بلکه یو ځل د
     # آرشیف ریښې ته لیکل کیږي، نو هره جوړه شوې `index.html` پاڼه یې

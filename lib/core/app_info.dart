@@ -8,8 +8,25 @@
 /// ګوري چې له `pubspec.yaml` سره سمه ده.
 library;
 
-const String kAppVersion = '1.5.0';
+const String kAppVersion = '1.6.0';
 
 const String kAppName = 'د آرشیف چټک مدیر';
 
 const String kAppTagline = 'د رسنیزو شواهدو د آرشیف مدیریت';
+
+/// د پروګرام جوړونکی — سایډبار کې د نوم لاندې ښکاري.
+const String kAppAuthor = 'ElyasOmar';
+
+/// **د جوړونکي پېژندنه** — د تنظیماتو «جوړونکی» ډله کې.
+const String kDevNamePs = 'الیاس عمر';
+const String kDevNameEn = 'M. Elyas Omar';
+const String kDevRole = 'د اندروید، وینډوز او iOS سیسټمونو لپاره پروګرام جوړونکی';
+
+const String kDevWhatsApp = '+93766465848';
+const String kDevTelegram = '@Elyas_Omar';
+const String kDevEmail = 'ElyasOmar100@gmail.com';
+
+/// د اړیکې لینکونه — د کلیک پر مهال پرانیستل کیږي.
+const String kDevWhatsAppUrl = 'https://wa.me/93766465848';
+const String kDevTelegramUrl = 'https://t.me/Elyas_Omar';
+const String kDevEmailUrl = 'mailto:$kDevEmail';

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -83,20 +85,68 @@ class AppState extends ChangeNotifier {
   //  پیل
   // ═══════════════════════════════════════════════════════
 
-  Future<void> boot() async {
-    settings = await backend.loadSettings();
-    final root = settings.archiveRoot;
+  /// د پیل اوسنی ګام — د پیل پاڼه یې ښیي، نو کاروونکی پوهیږي چې
+  /// پروګرام ژوندی دی او څه کوي.
+  String bootStep = 'پیلیږي…';
 
-    if (settings.onboarded && root != null) {
-      if (await backend.pathExists(root)) {
-        await _openRoot(root, rescan: backend.isReal);
-      } else {
-        rootMissing = true;
-        missingPath = root;
+  /// که پیل ناکام شي، دلته یې دلیل پروت وي — نه چې پروګرام
+  /// چوپ‌چاپ ودریږي.
+  String? bootError;
+
+  void _step(String s) {
+    bootStep = s;
+    notifyListeners();
+  }
+
+  /// **د پروګرام پیل.**
+  ///
+  /// ## دوه قاعدې چې دلته ماتې شوې وې
+  ///
+  /// **۱. پیل هیڅکله د سکن انتظار نه کوي.** پخوا یې د آرشیف
+  /// بشپړ رسکن ته انتظار کاوه: د ۵٬۰۰۰ پیښو آرشیف کې دا دقیقې
+  /// نیسي، او د پیل پاڼه ټول هغه وخت بې‌حرکته ولاړه وه — لکه
+  /// پروګرام چې هنګ شوی وي. اوس ایندکس پرانیستل کیږي (چټک دی)،
+  /// موجوده ډیټا سمدلاسه ښکاره کیږي، او **سکن پس‌منظر ته ځي** —
+  /// پرمختګ یې د سایډبار په پایښت کې ښکاري.
+  ///
+  /// **۲. هره تېروتنه نیول کیږي.** پخوا که ایندکس خراب و یا کوم
+  /// فایل نه لوستل کېده، استثنا به پورته تللې وه او `booting`
+  /// به هیڅکله غلط نه و — یعنې **د پیل پاڼه تلپاتې**. اوس هر
+  /// ګام په `try` کې دی: پروګرام پرانیستل کیږي، او تېروتنه
+  /// کاروونکي ته ښودل کیږي.
+  Future<void> boot() async {
+    try {
+      _step('تنظیمات لوستل کیږي…');
+      settings = await backend.loadSettings();
+      final root = settings.archiveRoot;
+
+      if (settings.onboarded && root != null) {
+        _step('د آرشیف مسیر ګورو…');
+        if (await backend.pathExists(root)) {
+          _step('ایندکس پرانیستل کیږي…');
+          await _openRoot(root, rescan: false);
+        } else {
+          rootMissing = true;
+          missingPath = root;
+        }
       }
+    } catch (e, st) {
+      // پروګرام باید پرانیستل شي — که هر څه هم پېښ شوي وي.
+      bootError = '$e';
+      debugPrint('ARCHIVE-BOOT-ERROR: $e\n$st');
     }
+
     booting = false;
     notifyListeners();
+
+    // ── سکن، وروسته له پرانیستلو ──
+    //
+    // دلته `await` نه کوو: کاروونکی لا دمخه پروګرام کاروي، او
+    // پرمختګ یې په سایډبار کې ویني.
+    final root = settings.archiveRoot;
+    if (backend.isReal && !rootMissing && root != null) {
+      unawaited(rescanArchive());
+    }
   }
 
   Future<void> _openRoot(String root, {bool rescan = true}) async {
@@ -226,6 +276,24 @@ class AppState extends ChangeNotifier {
     page = p;
     editing = null;
     previewMode = false;
+    notifyListeners();
+  }
+
+  /// د تنظیماتو کومه ډله پرانیستې ده (۰ = بڼه … ۵ = جوړونکی).
+  ///
+  /// دلته یې ساتو، نه د پاڼې دننه: نو د ټایټل بار «په اړه» تڼۍ
+  /// کولی شي مستقیم د جوړونکي ډلې ته ولاړه شي.
+  int settingsSection = 0;
+
+  /// تنظیمات پرانیزي — او که ووایې، سیده یوې ټاکلې ډلې ته.
+  void openSettings([int section = 0]) {
+    settingsSection = section;
+    go(AppPage.settings);
+  }
+
+  void setSettingsSection(int i) {
+    if (settingsSection == i) return;
+    settingsSection = i;
     notifyListeners();
   }
 

@@ -211,6 +211,22 @@ abstract class ArchiveBackend {
   /// د PDF اکسپورټ یې کاروي. په ویب کې کار نه کوي (فایل سیسټم
   /// نشته)، نو `null` راګرځوي.
   Future<String?> writeBytes(String path, List<int> bytes);
+
+  /// **د وینډوز خپل «Save As» ډایلوګ** — کاروونکی مسیر او نوم
+  /// ټاکي، بیا فایل هلته لیکل کیږي.
+  ///
+  /// کاروونکي وویل: «کله چې اکسپورټ کوو نو د وینډوز د ثبت پاڼه
+  /// راشي چې چیرته یې ثبت کړم». پخوا دوسیه چوپه د پیښې فولډر ته
+  /// تله — او کاروونکي به نه پوهېده چیرې لاړه.
+  ///
+  /// راګرځي: د ثبت شوې دوسیې مسیر، یا `null` که کاروونکي لغوه
+  /// کړه (یا په ویب کې چې ډایلوګ نشته).
+  Future<String?> saveFileAs({
+    required String fileName,
+    required List<int> bytes,
+    String? initialDirectory,
+    String mimeType = 'application/octet-stream',
+  });
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -1185,6 +1185,16 @@ class AppLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = radius ?? size * 0.225;
+
+    // **ولې `cacheWidth`؟** اصلي انځور ۵۱۲×۵۱۲ دی، خو سایډبار کې
+    // ~۳۸px ښکاري — یعنې ۱۳ ځله کوچنی کیږي. که GPU ته پوره اندازه
+    // ورکړو، هغه یې په چټکه (bilinear) طریقه کوچنی کوي او څنډې یې
+    // **کنګري** ښکاري — همدا هغه څه چې کاروونکي ولیدل. اوس انځور
+    // له پیله په خپله وروستۍ اندازه **ډيکوډ** کیږي (ښه resample)،
+    // نو څنډې نرمې راځي او حافظه هم لږه نیسي.
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+    final px = (size * dpr).round().clamp(16, 512);
+
     return Container(
       width: size,
       height: size,
@@ -1206,8 +1216,11 @@ class AppLogo extends StatelessWidget {
           'assets/icon/app-icon.png',
           width: size,
           height: size,
+          cacheWidth: px,
+          cacheHeight: px,
           fit: BoxFit.cover,
-          filterQuality: FilterQuality.medium,
+          isAntiAlias: true,
+          filterQuality: FilterQuality.high,
         ),
       ),
     );

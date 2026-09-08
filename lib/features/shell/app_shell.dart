@@ -168,25 +168,12 @@ class _TopBarState extends State<_TopBar> {
                     child: _ScanIndicator(progress: s.scan!),
                   ),
           ),
+          // **د بیا‌سکن او تیم تڼۍ دلته نه دي.**
+          //
+          // کاروونکي وویل: «د سکن او تیم افشن ټایټل بار ته راوړه
+          // ترڅو تل لاسرسي وړ وي». نو هغه اوس د پروګرام پر سر،
+          // په هره پاڼه کې دي — او دلته یې تکرار نه کوو.
           if (s.isDemo && c.maxWidth > 720) const _DemoBadge(),
-          const SizedBox(width: AppTokens.s8),
-          // د سکن پر مهال همدې تڼۍ کې یو څرخېدونکی ښکاري — نو
-          // ایکن خپل ځای نه بایلي، یوازې بڼه یې بدلیږي.
-          IconButton(
-            tooltip: s.scan != null ? 'سکن روان دی…' : 'آرشیف بیا سکن کړه',
-            icon: s.scan != null
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: Padding(
-                      padding: EdgeInsets.all(2),
-                      child: CircularProgressIndicator(strokeWidth: 2.2),
-                    ),
-                  )
-                : const Icon(Icons.refresh_rounded, size: 20),
-            onPressed: s.scan != null ? null : s.rescanArchive,
-          ),
-          const _ThemeToggle(),
         ],
         );
       }),
@@ -226,43 +213,6 @@ class _ScanIndicator extends StatelessWidget {
                 color: cs.primary),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// د تیم د بدلون تڼۍ — سپین ↔ تیاره ↔ سیستم.
-class _ThemeToggle extends StatelessWidget {
-  const _ThemeToggle();
-
-  @override
-  Widget build(BuildContext context) {
-    final s = context.watch<AppState>();
-    final t = s.settings.theme;
-    return IconButton(
-      tooltip: 'تیم: ${t.label}',
-      onPressed: () {
-        final next = switch (t) {
-          ThemeChoice.light => ThemeChoice.dark,
-          ThemeChoice.dark => ThemeChoice.system,
-          ThemeChoice.system => ThemeChoice.light,
-        };
-        s.setTheme(next);
-      },
-      icon: AnimatedSwitcher(
-        duration: AppTokens.base,
-        transitionBuilder: (c, a) => RotationTransition(
-            turns: Tween<double>(begin: 0.6, end: 1).animate(a),
-            child: FadeTransition(opacity: a, child: c)),
-        child: Icon(
-          switch (t) {
-            ThemeChoice.light => Icons.light_mode_rounded,
-            ThemeChoice.dark => Icons.dark_mode_rounded,
-            ThemeChoice.system => Icons.brightness_auto_rounded,
-          },
-          key: ValueKey(t),
-          size: 20,
-        ),
       ),
     );
   }

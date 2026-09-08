@@ -843,29 +843,78 @@ class _ExportPdfButtonState extends State<_ExportPdfButton> {
           ),
       };
 
-      final saved = await s.backend
-          .writeBytes(p.join(widget.event.folderPath, name), bytes);
+      // **د وینډوز خپل «چیرې یې ثبت کړو؟» ډایلوګ.**
+      //
+      // کاروونکي وویل: «کله چې اکسپورټ کوو نو د وینډوز د ثبت پاڼه
+      // راشي». پخوا دوسیه چوپه د پیښې فولډر ته تله. اوس کاروونکی
+      // ټاکي — او که لغوه یې کړه، هیڅ نه لیکل کیږي.
+      //
+      // په ویب/نندارې نسخه کې ډایلوګ نشته، نو هلته پخوانۍ لار
+      // پاتې ده (او هغه هم `null` راګرځوي — پیغام یې ښیي).
+      String? saved;
+      var canceled = false;
+      if (s.backend.isReal) {
+        saved = await s.backend.saveFileAs(
+          fileName: name,
+          bytes: bytes,
+          initialDirectory: widget.event.folderPath,
+          mimeType: kind == ExportKind.pdf ? 'application/pdf' : 'application/zip',
+        );
+        canceled = saved == null;
+      } else {
+        saved = await s.backend
+            .writeBytes(p.join(widget.event.folderPath, name), bytes);
+      }
 
       if (!mounted) return;
-      if (saved == null) {
-        messenger.showSnackBar(const SnackBar(
-            content: Text('په دې نسخه کې فایل ثبتول ناشوني دي')));
+      if (canceled) {
+        _say(messenger, 'اکسپورټ لغوه شو');
+      } else if (saved == null) {
+        _say(messenger, 'په دې نسخه کې فایل ثبتول ناشوني دي');
       } else {
-        messenger.showSnackBar(SnackBar(
-          content: Text('جوړ شو: $name  ·  ${humanBytes(bytes.length)}'),
+        _say(
+          messenger,
+          'ثبت شو: $name  ·  ${humanBytes(bytes.length)}',
           action: SnackBarAction(
             label: 'پرانیزه',
-            onPressed: () => s.backend.openExternally(saved),
+            onPressed: () => s.backend.openExternally(saved!),
           ),
-        ));
+        );
       }
     } catch (e) {
-      if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text('اکسپورټ ناکام شو: $e')));
-      }
+      if (mounted) _say(messenger, 'اکسپورټ ناکام شو: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// **یو ټوسټ چې پخپله ځي.**
+  ///
+  /// کاروونکي وویل: «ټوسټ باید په یوه ټاکلې مودې کې پخپله ورک
+  /// شي». نو:
+  ///
+  /// * مخکینی ټوسټ سمدلاسه لرې کیږي — نو دوه یو پر بل نه پاتې
+  ///   کیږي او نوی سمدلاسه ښکاري.
+  /// * موده څرګنده ده (۵ ثانیې)، نه د Material پر ډیفالټ پرېښودل
+  ///   شوې.
+  /// * **`persist: false`** — همدا هغه باګ و. د Material قاعده
+  ///   داسې ده: که یو ټوسټ `action` ولري، `persist` پخپله `true`
+  ///   کیږي او ټوسټ **هیڅکله پخپله نه ځي**. زمونږ د بریا ټوسټ
+  ///   «پرانیزه» تڼۍ لري — نو پر پردې ټینګ پاتې کېده.
+  /// * د تړلو ایکن هم لري — که کاروونکی یې لا ژر وغواړي.
+  static void _say(ScaffoldMessengerState m, String text,
+      {SnackBarAction? action}) {
+    m
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(text),
+        action: action,
+        persist: false,
+        showCloseIcon: true,
+        behavior: SnackBarBehavior.floating,
+        width: 460,
+        duration: const Duration(seconds: 5),
+      ));
   }
 
   /// د فایل نوم کې ناروا کرکټرونه لرې کوي.
@@ -905,17 +954,28 @@ class _ExportPdfButtonState extends State<_ExportPdfButton> {
                   color: cs.primary,
                 ),
                 const SizedBox(width: AppTokens.s12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(k.label,
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
-                    Text(k.hint,
-                        style: TextStyle(
-                            fontSize: 11, color: cs.onSurfaceVariant)),
-                  ],
+                // **`Expanded` اړین دی.** د منو پلنوالی محدود دی
+                // (~۲۵۶px)، او د دوهم افشن توضیح تر هغه اوږده ده —
+                // نو پرته له دې، کرښه بهر لویده.
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(k.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600)),
+                      Text(k.hint,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11,
+                              height: 1.5,
+                              color: cs.onSurfaceVariant)),
+                    ],
+                  ),
                 ),
               ],
             ),

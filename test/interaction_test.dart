@@ -6,6 +6,7 @@ import 'package:archive_manager/data/models/models.dart';
 import 'package:archive_manager/data/platform/demo_backend.dart';
 import 'package:archive_manager/data/repository/app_state.dart';
 import 'package:archive_manager/features/editor/html_builder.dart';
+import 'package:archive_manager/features/shell/title_bar.dart';
 import 'package:archive_manager/main.dart';
 
 Widget app(AppState s) =>
@@ -124,7 +125,13 @@ void main() {
     expect(s.events.length, used.usageCount);
   });
 
-  testWidgets('theme toggle cycles light → dark → system', (t) async {
+  testWidgets('د تیم تڼۍ (اوس په ټایټل بار کې) کړۍ وهي', (t) async {
+    // پخوا دا تڼۍ د ډاشبورډ په پورتني بار کې وه. کاروونکي وویل چې
+    // ټایټل بار ته دې ولاړه شي «ترڅو تل لاسرسي وړ وي» — نو اوس
+    // هلته ده، او په هره پاڼه کې کار کوي.
+    AppTitleBar.debugForceShow = true;
+    addTearDown(() => AppTitleBar.debugForceShow = false);
+
     await t.binding.setSurfaceSize(const Size(1600, 1000));
     final s = await booted();
     await t.pumpWidget(app(s));
@@ -139,7 +146,7 @@ void main() {
       ThemeMode.dark,
       ThemeMode.system,
     ]) {
-      final btn = find.byTooltip(RegExp('^تیم:'));
+      final btn = find.byKey(AppTitleBar.kTheme);
       expect(btn, findsOneWidget);
       await t.tap(btn);
       await t.pumpAndSettle();

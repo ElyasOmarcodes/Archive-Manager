@@ -68,4 +68,92 @@ void main() {
       await s.setUiScale(1.0);
     }
   });
+
+  // ═══════════════════════════════════════════════════════════
+  //  د کلیک ازموینه — دا هغه باګ دی چې کاروونکي راپور کړ
+  // ═══════════════════════════════════════════════════════════
+
+  /// **ولې دا ازموینه؟**
+  ///
+  /// کاروونکي وویل: «ما اندازه تر ټولو کوچنی کړله، نو د پریویو
+  /// پاڼه کې د ایډیټ افشن، د داخلي براوز او یا وینډوز براوز افشن
+  /// د کلیک وړ نه وو، همدا شان د ټوسټ پیغام دننه د «پرانیزه» بټن
+  /// هم».
+  ///
+  /// علت: `OverflowBox` د `Transform` **لاندې** و، نو د
+  /// `Transform` خپله اندازه د کړکۍ هومره پاتې وه. کلیک چې د
+  /// معکوس تحویل روسته تر هغې اندازې بهر لوېده، بې‌ځوابه پاتې
+  /// کېده — یعنې د پردې چپه او لاندې برخه ټوله مړه وه.
+  ///
+  /// دلته ریښتیني تڼۍ وهو، نه یوازې اندازې پرتله کوو.
+  group('پر هرې کچې هره تڼۍ کلیکیږي', () {
+    for (final (scale, label) in AppSettings.scaleOptions) {
+      testWidgets('$label (${(scale * 100).round()}٪)', (t) async {
+        final s = await boot(t, scale);
+
+        // ── ۱) سایډبار: تر ټولو ښکته توکی (تنظیمات) ──
+        await t.tap(find.text('تنظیمات').last, warnIfMissed: false);
+        await t.pumpAndSettle();
+        expect(s.page, AppPage.settings,
+            reason: 'د سایډبار ښکته توکی ونه کلیکېد');
+
+        // ── ۲) د تنظیماتو رېل: تر ټولو ښکته ډله ──
+        await t.tap(find.text('په اړه').first);
+        await t.pumpAndSettle();
+        expect(find.textContaining('نسخه'), findsWidgets,
+            reason: '«په اړه» ډله ونه پرانیستل شوه');
+
+        // ── ۳) د پریویو ټولبار — هماغه چې کاروونکي یادې کړې ──
+        s.openEditor(s.events.first);
+        await t.pumpAndSettle();
+        s.setPreview(true);
+        await t.pumpAndSettle();
+
+        // «ایډیټ» تڼۍ: د پریویو له حالته بېرته ایډیټر ته
+        final edit = find.text('ایډیټ');
+        if (edit.evaluate().isNotEmpty) {
+          await t.tap(edit.first);
+          await t.pumpAndSettle();
+          expect(s.previewMode, isFalse,
+              reason: 'پر $label کچه «ایډیټ» ونه کلیکېد');
+          s.setPreview(true);
+          await t.pumpAndSettle();
+        }
+
+        // «په براوزر کې» — د ټولبار تر ټولو چپه تڼۍ (RTL)
+        final browse = find.text('په براوزر کې');
+        if (browse.evaluate().isNotEmpty) {
+          final box = t.getRect(browse.first);
+          // ریښتیني کلیک هماغه ځای ته چې سترګه یې ویني
+          final hit = t.hitTestOnBinding(box.center);
+          expect(hit.path.length, greaterThan(1),
+              reason: 'پر $label کچه «په براوزر کې» د کلیک وړ نه ده');
+        }
+
+        s.closeEditor();
+        await t.pumpAndSettle();
+        expect(t.takeException(), isNull);
+      });
+    }
+  });
+
+  testWidgets('د ټوسټ تڼۍ هم پر کوچنۍ کچه کلیکیږي', (t) async {
+    // «پرانیزه» د پردې تر ټولو ښکته څنډې ته وي — هماغه ځای چې
+    // پخوا مړ و.
+    await boot(t, 0.8);
+    final messenger = ScaffoldMessenger.of(
+        t.element(find.byType(AppShell)));
+    var tapped = false;
+    messenger.showSnackBar(SnackBar(
+      content: const Text('ازموینه'),
+      duration: const Duration(seconds: 30),
+      action: SnackBarAction(
+          label: 'پرانیزه', onPressed: () => tapped = true),
+    ));
+    await t.pumpAndSettle();
+
+    await t.tap(find.text('پرانیزه'));
+    await t.pumpAndSettle();
+    expect(tapped, isTrue, reason: 'د ټوسټ تڼۍ ونه کلیکېده');
+  });
 }

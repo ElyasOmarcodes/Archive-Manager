@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:archive_manager/data/platform/backend.dart';
 import 'package:archive_manager/data/platform/demo_backend.dart';
 import 'package:archive_manager/data/repository/app_state.dart';
 import 'package:archive_manager/features/shell/title_bar.dart';
@@ -72,18 +73,15 @@ void main() {
         ChangeNotifierProvider.value(value: s, child: const ArchiveApp()));
     await t.pumpAndSettle();
 
-    // د ایکن له مخې یې لټوو، نه د لیبل — `Semantics` پخپله نوی
-    // نوډ نه جوړوي، نو لیبل د ګاونډي متن سره یو ځای شي.
-    double x(String name, IconData icon) {
-      final f = find.descendant(
-          of: find.byType(AppTitleBar), matching: find.byIcon(icon));
+    double x(String name, Key key) {
+      final f = find.byKey(key);
       expect(f, findsOneWidget, reason: '«$name» تڼۍ ونه موندل شوه');
       return t.getCenter(f).dx;
     }
 
-    final close = x('تړل', Icons.close_rounded);
-    final maximize = x('لوی / کوچنی', Icons.open_in_full_rounded);
-    final minimize = x('ښکته کول', Icons.remove_rounded);
+    final close = x('تړل', AppTitleBar.kClose);
+    final maximize = x('لوی / کوچنی', AppTitleBar.kMaximize);
+    final minimize = x('ښکته کول', AppTitleBar.kMinimize);
 
     // درې واړه د پردې په ښي نیمايي کې
     for (final (name, v) in [
@@ -98,5 +96,95 @@ void main() {
     // د وینډوز ترتیب: ښکته < لوی < تړل (تړل تر ټولو ښي)
     expect(minimize, lessThan(maximize));
     expect(maximize, lessThan(close));
+  });
+
+  testWidgets('د کړکۍ تڼۍ **سمدلاسه** کار کوي — نه یوه ثانیه وروسته',
+      (t) async {
+    // کاروونکي وویل: «کله د فول اسکرین یا مینی مایز یا کنسل افشن
+    // وهو، نږدې یوه ثانیه روسته عمل کوي».
+    //
+    // علت: د کش کولو `GestureDetector` یو `onDoubleTap` درلود، او
+    // هغه د ټول بار لپاره د ایشارو ډګر ~۳۰۰ms نیوه. دلته یوازې
+    // `pump()` کوو — **هیڅ وخت نه تېروو**. که ډګر بیا هم ونیول
+    // شي، دا ازموینه ناکامه کیږي.
+    AppTitleBar.debugForceShow = true;
+    final fired = <String>[];
+    AppTitleBar.debugOnWindowAction = fired.add;
+    addTearDown(() {
+      AppTitleBar.debugForceShow = false;
+      AppTitleBar.debugOnWindowAction = null;
+    });
+
+    await t.binding.setSurfaceSize(const Size(1400, 900));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+    final s = AppState(DemoBackend());
+    await s.boot();
+    await t.pumpWidget(
+        ChangeNotifierProvider.value(value: s, child: const ArchiveApp()));
+    await t.pumpAndSettle();
+
+    for (final (name, key) in [
+      ('minimize', AppTitleBar.kMinimize),
+      ('maximize', AppTitleBar.kMaximize),
+      ('close', AppTitleBar.kClose),
+    ]) {
+      fired.clear();
+      await t.tap(find.byKey(key));
+      await t.pump(); // بس یو فریم — هیڅ ځنډ نه
+      expect(fired, [name], reason: '«$name» باید سمدلاسه عمل وکړي');
+    }
+  });
+
+  testWidgets('سکن، تیم او «په اړه» تڼۍ په هره پاڼه کې دي', (t) async {
+    // کاروونکي وویل: «د سکن او تیم افشن ټایټل بار ته راوړه ترڅو
+    // تل لاسرسي وړ وي» — او «په اړه» تڼۍ هم ورسره.
+    AppTitleBar.debugForceShow = true;
+    addTearDown(() => AppTitleBar.debugForceShow = false);
+    await t.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    final s = AppState(DemoBackend());
+    await s.boot();
+    await t.pumpWidget(
+        ChangeNotifierProvider.value(value: s, child: const ArchiveApp()));
+    await t.pumpAndSettle();
+
+    for (final p in AppPage.values) {
+      s.go(p);
+      await t.pumpAndSettle();
+      for (final k in [
+        AppTitleBar.kScan,
+        AppTitleBar.kTheme,
+        AppTitleBar.kAbout
+      ]) {
+        expect(find.byKey(k), findsOneWidget, reason: '${p.name}: $k');
+      }
+    }
+  });
+
+  testWidgets('د تیم تڼۍ تیم بدلوي، او «په اړه» د جوړونکي ډلې ته ځي',
+      (t) async {
+    AppTitleBar.debugForceShow = true;
+    addTearDown(() => AppTitleBar.debugForceShow = false);
+    await t.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    final s = AppState(DemoBackend());
+    await s.boot();
+    await s.setTheme(ThemeChoice.light);
+    await t.pumpWidget(
+        ChangeNotifierProvider.value(value: s, child: const ArchiveApp()));
+    await t.pumpAndSettle();
+
+    await t.tap(find.byKey(AppTitleBar.kTheme));
+    await t.pump();
+    expect(s.settings.theme, ThemeChoice.dark);
+
+    await t.tap(find.byKey(AppTitleBar.kAbout));
+    await t.pumpAndSettle();
+    expect(s.page, AppPage.settings);
+    expect(s.settingsSection, 5);
+    expect(find.text('الیاس عمر'), findsOneWidget);
+    expect(t.takeException(), isNull);
   });
 }

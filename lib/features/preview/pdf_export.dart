@@ -109,6 +109,8 @@ class EventPdf {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         textDirection: pw.TextDirection.rtl,
+        // ډیفالټ ۲۰ دی — یو اوږد راپور یې په اسانه تېروي.
+        maxPages: 500,
         margin: const pw.EdgeInsets.fromLTRB(48, 44, 48, 52),
         header: (_) => _letterhead(e),
         footer: (c) => _footer(c, e),
@@ -117,11 +119,14 @@ class EventPdf {
           if (e.summary.isNotEmpty) ...[
             pw.SizedBox(height: 20),
             _sectionTitle('۱', 'لنډیز'),
-            pw.Paragraph(
-              text: _t(e.summary),
-              style: const pw.TextStyle(fontSize: 10.5, lineSpacing: 4),
-              margin: const pw.EdgeInsets.only(bottom: 2),
-            ),
+            // **مستقیم اولاد، نه په `Padding` کې.** `MultiPage`
+            // یوازې هغه ویجټ پر پاڼو ویشي چې **سیده** یې اولاد وي
+            // او `SpanningWidget` وي. که یې په `Padding` یا
+            // `Column` کې وتړو، بیا نه ویشل کیږي — او یو اوږد
+            // لنډیز ټول اکسپورټ ماتوي.
+            pw.Text(_t(e.summary),
+                overflow: pw.TextOverflow.span,
+                style: const pw.TextStyle(fontSize: 10.5, lineSpacing: 4)),
           ],
           if (e.blocks.isNotEmpty) ...[
             pw.SizedBox(height: 14),
@@ -145,24 +150,17 @@ class EventPdf {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         textDirection: pw.TextDirection.rtl,
+        // ډیفالټ ۲۰ دی — یو اوږد راپور یې په اسانه تېروي.
+        maxPages: 500,
         margin: const pw.EdgeInsets.fromLTRB(48, 44, 48, 52),
         header: (_) => _letterhead(e),
         footer: (c) => _footer(c, e),
+        // **پر دې پاڼه یوازې جدول.** کاروونکي وویل: «اخیري پاڼه
+        // کې فقط د میټاډیټا جدول وي». نو هیڅ توضیح، هیڅ بل جدول —
+        // یو سرلیک او یو جدول.
         build: (context) => [
           _sectionTitle(_nextNo(e, 'metadata'), 'میټاډیټا'),
-          pw.Paragraph(
-            text: _t('دا پاڼه د پیښې بشپړ ثبت دی. اصلي فایل د همدې '
-                'PDF دننه دوه ځایه ضمیمه دی: د XMP په بڼه، او د PDF '
-                'د ضمیمو (Embedded Files) په بڼه — نو له همدې یوې '
-                'دوسیې نه پیښه بیا جوړېدلی شي.'),
-            style: const pw.TextStyle(
-                fontSize: 9.5, lineSpacing: 3.5, color: _muted),
-          ),
           pw.SizedBox(height: 10),
-          _subTitle('الف — پېژندنه'),
-          _identityTable(e),
-          pw.SizedBox(height: 14),
-          _subTitle('ب — خام ثبت (metadata.json)'),
           _metadataTable(e),
         ],
       ),
@@ -384,44 +382,6 @@ class EventPdf {
     );
   }
 
-  static pw.Widget _subTitle(String text) => pw.Padding(
-        padding: const pw.EdgeInsets.only(bottom: 5, top: 2),
-        child: pw.Text(_t(text),
-            style: pw.TextStyle(
-                fontSize: 10, fontWeight: pw.FontWeight.bold, color: _muted)),
-      );
-
-  /// **د پېژندنې جدول** — هغه څه چې فلټر پرې کار کوي.
-  static pw.Widget _identityTable(EventMetadata e) {
-    final rows = <(String, String)>[
-      if (e.category.isNotEmpty) ('کټګوري', _t(e.category)),
-      ('نېټه (هجري لمریز)', _t(e.date.shamsiText)),
-      ('نېټه (هجري قمري)', _t(e.date.qamariText)),
-      ('نېټه (میلادي)', _t(e.date.miladiText)),
-      ('درجه', '${PashtoDigits.to(e.rating)} له ۵'),
-      ('رنګ ټګ', '${e.colorTag.label} — ${e.colorTag.meaning}'),
-      if (e.keywords.isNotEmpty)
-        ('کیوردونه', e.keywords.map(_t).join('، ')),
-      if (e.persons.isNotEmpty) ('شخصیتونه', e.persons.map(_t).join('، ')),
-      ('ضمیمې', '${PashtoDigits.to(e.attachmentCount)} فایله  ·  '
-          '${_bytes(e.totalBytes)}'),
-      ('د سند شمېره', e.id),
-      ('د پوښۍ مسیر', e.folderPath),
-    ];
-
-    return _table(
-      header: const ['ډګر', 'ارزښت'],
-      widths: const {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(2.6)},
-      rows: [
-        for (final r in rows) [r.$1, r.$2],
-      ],
-      // **مسیر ولې RTL؟** ځکه پکې د پښتو پوښۍ نومونه دي
-      // (`…\سنبله\د کابل تړون`). که چپ‌څخه‌ښي یې ښیو، پښتو برخه
-      // یې چپه رسمیږي — او هغه هغه څه دي چې کاروونکی یې لولي.
-      ltrCell: (row, col) => false,
-    );
-  }
-
   static pw.Widget _sectionTitle(String no, String text) => pw.Container(
         margin: const pw.EdgeInsets.only(bottom: 8, top: 2),
         padding: const pw.EdgeInsets.only(bottom: 3),
@@ -464,12 +424,35 @@ class EventPdf {
 
         case BlockKind.paragraph:
           if (b.text.trim().isEmpty) break;
-          out.add(pw.Padding(
-            padding: const pw.EdgeInsets.only(bottom: 8),
-            child: _linked(b.text),
-          ));
+          // فاصله جلا ویجټ ده — نو متن پخپله سیده اولاد پاتې شي
+          // او د پاڼو تر منځ وویشل شي.
+          out.add(_linked(b.text));
+          out.add(pw.SizedBox(height: 8));
 
         case BlockKind.quote:
+          // **ولې دوه بڼې؟**
+          //
+          // چوکاټ (`Container`) د پاڼې پر څنډه نه ماتیږي — که
+          // نقل قول تر یوې پاڼې اوږد شي، ټول اکسپورټ ناکام کیږي.
+          // نو اوږد نقل قول ساده، ماتېدونکې بڼه نیسي: د پیل
+          // ژورتیا + «» نښې، چې د پاڼو تر منځ دوام کولی شي.
+          if (_t(b.text).length > 700) {
+            out.add(pw.SizedBox(height: 6));
+            out.add(pw.Text('«${_t(b.text)}»',
+                overflow: pw.TextOverflow.span,
+                style: const pw.TextStyle(
+                    fontSize: 10.5, lineSpacing: 4, color: _muted)));
+            if (b.author.isNotEmpty) {
+              out.add(pw.SizedBox(height: 4));
+              out.add(pw.Text('— ${_t(b.author)}',
+                  style: pw.TextStyle(
+                      fontSize: 9,
+                      color: _muted,
+                      fontWeight: pw.FontWeight.bold)));
+            }
+            out.add(pw.SizedBox(height: 6));
+            break;
+          }
           // **پام: د یوې خوا کرښه + `borderRadius` سره نه ځایږي**
           // (د pdf کتابتون یې نه مني)، او `CrossAxisAlignment
           // .stretch` په `MultiPage` کې «Infinity height» ورکوي.
@@ -615,16 +598,50 @@ class EventPdf {
         ltrCell: (row, col) => col == 1 || col == 4,
       );
 
-  /// د میټاډیټا کرښې — د جدول سرچینه.
+  /// **د وروستۍ پاڼې میټاډیټا.**
   ///
-  /// ازموینه یې مستقیم ګوري: د رسم شوي PDF متن راایستل د فونټ د
-  /// ToUnicode جدول له لارې کیږي، چې ډېر نازک دی. دلته اصلي ډیټا
-  /// ازمویو — هغه چې جدول یې ښیي.
+  /// کاروونکي وویل: «اخیری پاڼه کې فقط میټاډیټا وي». نو دلته
+  /// یوازې یو جدول دی — هغه ډګرونه چې د آرشیف لپاره مهم دي. د
+  /// ضمیمو جدول پخپله د سند په بدنه کې (برخه ۳) دی، نو دلته یې
+  /// نه تکراروو.
+  ///
+  /// **اوږد ارزښتونه لنډیږي.** ولې؟ ځکه د جدول یوه کرښه د پاڼو
+  /// تر منځ نه ماتیږي — یو اوږد لنډیز به د پاڼو بې‌پایه کړۍ
+  /// جوړه کړي او ټول اکسپورټ به ناکام شي. بشپړ متن پخپله د سند
+  /// په بدنه، په XMP او په ضمیمه شوي `metadata.json` کې دی.
   @visibleForTesting
   static List<MapEntry<String, String>> metadataRows(EventMetadata e) {
-    final j = e.toJson();
-    j.remove('text'); // اوږد متن پخپله پورته دی
-    return [for (final x in j.entries) MapEntry(x.key, '${x.value}')];
+    String cut(String v) =>
+        v.length <= 220 ? v : '${v.substring(0, 220)}…';
+
+    return [
+      MapEntry('د سند شمېره', e.id),
+      MapEntry('سرلیک', cut(e.title)),
+      if (e.category.isNotEmpty) MapEntry('کټګوري', e.category),
+      MapEntry('نېټه (هجري لمریز)', e.date.shamsiText),
+      MapEntry('نېټه (هجري قمري)', e.date.qamariText),
+      MapEntry('نېټه (میلادي)', e.date.miladiText),
+      MapEntry('د ورځې شمېره (JDN)', '${e.date.jdn}'),
+      MapEntry('درجه', '${PashtoDigits.to(e.rating)} له ۵'),
+      MapEntry('رنګ ټګ', '${e.colorTag.label} — ${e.colorTag.meaning}'),
+      if (e.keywords.isNotEmpty)
+        MapEntry('کیوردونه', cut(e.keywords.join('، '))),
+      if (e.persons.isNotEmpty)
+        MapEntry('شخصیتونه', cut(e.persons.join('، '))),
+      MapEntry('ضمیمې',
+          '${PashtoDigits.to(e.attachmentCount)} فایله  ·  ${_bytes(e.totalBytes)}'),
+      if (e.summary.isNotEmpty) MapEntry('لنډیز', cut(e.summary)),
+      MapEntry('د پوښۍ مسیر', e.folderPath),
+      MapEntry('ثبت شوې', _stamp(e.createdAt)),
+      MapEntry('وروستی بدلون', _stamp(e.updatedAt)),
+    ];
+  }
+
+  static String _stamp(DateTime d) {
+    final t = TriDate.fromDateTime(d);
+    final hh = d.hour.toString().padLeft(2, '0');
+    final mm = d.minute.toString().padLeft(2, '0');
+    return '${t.shamsiText}  ·  ${PashtoDigits.to('$hh:$mm')}';
   }
 
   /// **د نه‌لیدونکو تورو پاکونکی** — د ازموینې لپاره ښکاره.
@@ -633,15 +650,12 @@ class EventPdf {
 
   static pw.Widget _metadataTable(EventMetadata e) => _table(
         header: const ['ډګر', 'ارزښت'],
-        widths: const {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(2.6)},
+        widths: const {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(2.2)},
         rows: [
-          // **پام:** ارزښتونه دلته هم پاکیږي. جدول د **لوستلو**
-          // لپاره دی — که ZWNJ پکې پاتې شي، «پ‌ښ‌تو» ټوټې ښکاري.
-          // اصلي، بې‌لاسوهنې بڼه یې په XMP او ضمیمه کې ده.
           for (final r in metadataRows(e)) [r.key, _t(r.value)],
         ],
-        // کیلي ټولې لاتیني دي
-        ltrCell: (row, col) => col == 0,
+        ltrCell: (row, col) =>
+            col == 1 && metadataRows(e)[row].key == 'د سند شمېره',
       );
 
   // ═════════════════════════════════════════════════════════
@@ -796,9 +810,16 @@ class EventPdf {
     final chunks = linkify(text);
     if (!chunks.any((c) => c.isLink)) {
       return pw.Text(_t(text),
+          // **`span` اړین دی.** بې له هغه یوه اوږده پاراګراف چې
+          // د یوې پاڼې تر لوړوالي ډېره شي، ټول اکسپورټ ماتوي:
+          // «Widget won't fit into the page as its height (3269)
+          // exceed a page height». اوس پخپله راتلونکې پاڼې ته
+          // دوام ورکوي.
+          overflow: pw.TextOverflow.span,
           style: pw.TextStyle(fontSize: size, lineSpacing: 4));
     }
     return pw.RichText(
+      overflow: pw.TextOverflow.span,
       text: pw.TextSpan(
         style: pw.TextStyle(fontSize: size, lineSpacing: 4),
         children: [

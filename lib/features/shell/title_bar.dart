@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/tokens.dart';
+import '../../data/platform/backend.dart';
 import '../../data/repository/app_state.dart';
 
 import 'window_controls.dart'
@@ -9,52 +10,74 @@ import 'window_controls.dart'
 
 /// **د پروګرام خپل ټایټل بار.**
 ///
-/// د وینډوز اصلي بار پټ دی. پرځای یې دا کرښه راځي:
-///
 /// ```
-///            د آرشیف چټک مدیر            ● ● ●
+///   ⟳  ☀  ⓘ            د آرشیف چټک مدیر            ● ● ●
 /// ```
 ///
-/// * درې ګردې تڼۍ **ښي لور ته** — ځکه چې په وینډوز کې د هر
-///   پروګرام تڼۍ هلته وي، او کاروونکی یې هملته لټوي.
-/// * ترتیب یې هم د وینډوز دی: **ښکته کول · لوی/کوچنی · تړل**،
-///   او «تړل» تر ټولو څنډې ته — نو د غلط کلیک ګواښ کم وي.
-/// * بڼه یې د macOS پاکې رنګینې دایرې دي: ژیړ (ښکته)، شین
-///   (لوی/کوچنی)، سور (تړل). ایکنونه یوازې د ماوس د تېرېدو پر
-///   مهال ښکاري — نوی macOS همداسې کوي.
-/// * سرلیک په **منځ** کې، نری او خړ — نه ډبل، نه ځلېدونکی.
-/// * ټوله کرښه د **کش کولو** وړ ده، او دوه‌ځله کلیک یې لوی/کوچنی
-///   کوي — لکه هر عادي کړکۍ.
+/// * ښي لور ته **د کړکۍ درې تڼۍ** — ځکه په وینډوز کې هر پروګرام
+///   یې هلته لري: ښکته کول · لوی/کوچنی · تړل.
+/// * کیڼ لور ته **د پروګرام تڼۍ** — بیا سکن، تیم، او د جوړونکي
+///   پاڼه. دا د ټولې پروګرام په هره پاڼه کې لاسرسي وړ دي.
+/// * سرلیک په منځ کې، نری او خړ.
+/// * ټوله کرښه د کش کولو وړ ده، دوه‌ځله کلیک یې لوی/کوچنی کوي.
 ///
-/// **پام:** تڼۍ په RTL کې هم ښي لور ته پاتې کیږي، د فزیکي څنډې
-/// له مخې — نو مونږ یې `Directionality` په `ltr` کې تړو او
-/// `centerRight` ورکوو. که د ژبې له لوري سره وګرځي، په پښتو کې
-/// به چپ ته ولاړې شي او د وینډوز عادت به مات شي.
+/// ## دوه ټکي چې کاروونکي راپور کړل
+///
+/// **۱. تڼۍ نږدې یوه ثانیه وروسته کار کوي.** علت یې د کش کولو
+/// `GestureDetector` و: هغه `onDoubleTap` درلود، او یو
+/// `DoubleTapGestureRecognizer` د **ټول بار** لپاره د ~۳۰۰ms
+/// لپاره د ایشارو ډګر (gesture arena) **نیسي** — نو د تڼۍ کلیک
+/// تر هغه وخته نه پرېکیده. اوس د کش کولو پوړ د `Stack` **تر ټولو
+/// لاندې** دی او تڼۍ یې **پورته** دي: `Stack` لومړی پورتنی اولاد
+/// ازمویي او هلته درېږي — نو د تڼۍ کلیک هیڅ ډګر ته نه ننوځي او
+/// **سمدلاسه** کار کوي.
+///
+/// **۲. د تڼیو ایکنونه نري او نالوستي وو.** هغه د Material
+/// ایکنونه په ۸٫۵px کې وو — په دومره کوچني کچ کې د فونټ کرښې
+/// خړې کیږي. اوس **پخپله رسمیږي** (`_GlyphPainter`): سیده کرښې،
+/// ټاکلې پنډوالی، او تل ښکاري — نه یوازې د ماوس د تېرېدو پر مهال.
 class AppTitleBar extends StatefulWidget {
   const AppTitleBar({super.key});
 
-  /// د بار لوړوالی — د macOS معیار ته نږدې.
+  /// د بار لوړوالی.
   static const double height = 38;
 
   /// **یوازې د ازموینې لپاره.** په ازموینو کې پروګرام ډیسکټاپ نه
   /// دی، نو بار پخپله تش وي — او د تڼیو ځای نه شي ازمویل کېدلی.
-  /// دا بېرغ یې ښکاره کوي، نو ازموینه ګوري چې تڼۍ ریښتیا ښي
-  /// لور ته دي.
   @visibleForTesting
   static bool debugForceShow = false;
+
+  // ── د ازموینې کلیدونه ──
+  //
+  // د کړکۍ ایکنونه اوس `CustomPaint` دي (نه `Icon`)، نو ازموینه
+  // یې د کلید له مخې مومي.
+  @visibleForTesting
+  static const kMinimize = ValueKey('titlebar-minimize');
+  @visibleForTesting
+  static const kMaximize = ValueKey('titlebar-maximize');
+  @visibleForTesting
+  static const kClose = ValueKey('titlebar-close');
+  @visibleForTesting
+  static const kScan = ValueKey('titlebar-scan');
+  @visibleForTesting
+  static const kTheme = ValueKey('titlebar-theme');
+  @visibleForTesting
+  static const kAbout = ValueKey('titlebar-about');
+
+  /// **یوازې د ازموینې لپاره.** که ټاکل شوی وي، د کړکۍ ریښتینی
+  /// عمل نه ترسره کیږي — یوازې نوم یې دې فعالیت ته ورکول کیږي.
+  /// نو ازموینه ګوري چې کلیک **سمدلاسه** پرېکیږي (بې د ایشارو
+  /// ډګر له ځنډه)، پرته له دې چې ریښتینې کړکۍ وتړي.
+  @visibleForTesting
+  static void Function(String action)? debugOnWindowAction;
 
   @override
   State<AppTitleBar> createState() => _AppTitleBarState();
 }
 
 class _AppTitleBarState extends State<AppTitleBar> {
-  bool _hovered = false;
-
   /// د سکرین‌شاټ لپاره یې په ویب کې هم ښکاره کولی شو:
   /// `flutter build web --dart-define=FORCE_TITLE_BAR=true`
-  ///
-  /// په هغه جوړونه کې تڼۍ بې‌اثره وي (ویب کړکۍ نه لري) — نو یوازې
-  /// د ډیزاین د کتلو لپاره ده، نه د خپرولو لپاره.
   static const _force = bool.fromEnvironment('FORCE_TITLE_BAR');
 
   @override
@@ -66,99 +89,134 @@ class _AppTitleBarState extends State<AppTitleBar> {
     final cs = Theme.of(context).colorScheme;
     final s = context.watch<AppState>();
 
-    // **`Material` اړین دی.**
-    //
-    // دا بار د `Navigator` تر پورته دی، نو د `Scaffold` هیڅ
-    // `Material` یې پر سر نشته. بې له هغه، Flutter هر `Text` ته
-    // یوه ژیړ کرښه ورکوي (د «Material نشته» نښه) — نو سرلیک زمونږ
-    // د یوه ژیړ بلاک په بڼه رسمېده، نه د متن.
+    // **`Material` اړین دی.** دا بار د `Navigator` تر پورته دی، نو
+    // د `Scaffold` هیڅ `Material` یې پر سر نشته — او بې له هغه
+    // Flutter هر `Text` ته د «Material نشته» ژیړه کرښه ورکوي.
     return Material(
       color: cs.surfaceContainer,
       child: SizedBox(
-      height: AppTitleBar.height,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainer,
-          border: Border(
-            bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
+        height: AppTitleBar.height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainer,
+            border: Border(
+              bottom:
+                  BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
+            ),
           ),
-        ),
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onPanStart: (_) => windowStartDragging(),
-          onDoubleTap: windowHandleDoubleTap,
-          child: MouseRegion(
-            onEnter: (_) => setState(() => _hovered = true),
-            onExit: (_) => setState(() => _hovered = false),
-            child: Stack(
-              children: [
-                // ── سرلیک: تل په منځ کې، د تڼیو له ځایه خپلواک ──
-                Center(
-                  child: Text(
-                    s.settings.archiveRoot == null
-                        ? 'د آرشیف چټک مدیر'
-                        : 'د آرشیف چټک مدیر — ${_short(s.settings.archiveRoot!)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurfaceVariant,
-                      letterSpacing: 0.1,
-                    ),
-                  ),
+          child: Stack(
+            children: [
+              // ── ۱ · د کش کولو پوړ (تر ټولو لاندې) ──
+              //
+              // دا باید **لومړی** اولاد وي: `Stack` د کلیک پر مهال
+              // له پایه پیل کوي، نو تڼۍ تر دې دمخه ازمویل کیږي او
+              // د دې `onDoubleTap` یې نه ځنډوي.
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanStart: (_) => windowStartDragging(),
+                  onDoubleTap: windowHandleDoubleTap,
                 ),
+              ),
 
-                // ── د کړکۍ تڼۍ — تل ښي لور ته، د وینډوز په څېر ──
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 11),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // د وینډوز ترتیب: ښکته · لوی · تړل
-                          _Light(
-                            color: const Color(0xFFFEBC2E),
-                            hoverColor: const Color(0xFFDEA123),
-                            icon: Icons.remove_rounded,
-                            tooltip: 'ښکته کول',
-                            show: _hovered,
-                            onTap: windowMinimize,
-                          ),
-                          const SizedBox(width: 8),
-                          _Light(
-                            color: const Color(0xFF28C840),
-                            hoverColor: const Color(0xFF1DAD2B),
-                            icon: Icons.open_in_full_rounded,
-                            tooltip: 'لوی / کوچنی',
-                            show: _hovered,
-                            onTap: windowToggleMaximize,
-                          ),
-                          const SizedBox(width: 8),
-                          // «تړل» تر ټولو څنډې ته — لکه وینډوز
-                          _Light(
-                            color: const Color(0xFFFF5F57),
-                            hoverColor: const Color(0xFFE0443E),
-                            icon: Icons.close_rounded,
-                            tooltip: 'تړل',
-                            show: _hovered,
-                            onTap: windowClose,
-                          ),
-                        ],
+              // ── ۲ · سرلیک (کلیک نه نیسي) ──
+              IgnorePointer(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 150),
+                    child: Text(
+                      s.settings.archiveRoot == null
+                          ? 'د آرشیف چټک مدیر'
+                          : 'د آرشیف چټک مدیر — '
+                              '${_short(s.settings.archiveRoot!)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurfaceVariant,
+                        letterSpacing: 0.1,
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              // ── ۳ · د پروګرام تڼۍ (فزیکي کیڼ لور) ──
+              const Directionality(
+                textDirection: TextDirection.ltr,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: _Actions(),
+                  ),
+                ),
+              ),
+
+              // ── ۴ · د کړکۍ تڼۍ (فزیکي ښي لور) ──
+              //
+              // **پام:** دلته `Directionality` په `ltr` کې تړل کیږي.
+              // که د ژبې له لوري سره وګرځي، په پښتو کې به چپ ته
+              // ولاړې شي او د وینډوز عادت به مات شي.
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 11),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // د وینډوز ترتیب: ښکته · لوی · تړل
+                        _Light(
+                          key: AppTitleBar.kMinimize,
+                          color: const Color(0xFFFEBC2E),
+                          hoverColor: const Color(0xFFDEA123),
+                          glyph: _Glyph.minimize,
+                          tooltip: 'ښکته کول',
+                          onTap: () => _fire('minimize', windowMinimize),
+                        ),
+                        const SizedBox(width: 8),
+                        _Light(
+                          key: AppTitleBar.kMaximize,
+                          color: const Color(0xFF28C840),
+                          hoverColor: const Color(0xFF1DAD2B),
+                          glyph: _Glyph.maximize,
+                          tooltip: 'لوی / کوچنی',
+                          onTap: () =>
+                              _fire('maximize', windowToggleMaximize),
+                        ),
+                        const SizedBox(width: 8),
+                        // «تړل» تر ټولو څنډې ته — لکه وینډوز
+                        _Light(
+                          key: AppTitleBar.kClose,
+                          color: const Color(0xFFFF5F57),
+                          hoverColor: const Color(0xFFE0443E),
+                          glyph: _Glyph.close,
+                          tooltip: 'تړل',
+                          onTap: () => _fire('close', windowClose),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
-      ),
     );
+  }
+
+  /// د کړکۍ عمل — یا ریښتینی، یا (په ازموینه کې) یوازې خبر.
+  static void _fire(String action, VoidCallback real) {
+    final hook = AppTitleBar.debugOnWindowAction;
+    if (hook != null) {
+      hook(action);
+      return;
+    }
+    real();
   }
 
   /// `E:\Arvitch\1405` → `Arvitch`
@@ -168,24 +226,226 @@ class _AppTitleBarState extends State<AppTitleBar> {
   }
 }
 
-/// یوه ګرده تڼۍ — د macOS د ترافیک څراغ په څېر.
+// ═══════════════════════════════════════════════════════════
+//  د پروګرام تڼۍ — سکن · تیم · جوړونکی
+// ═══════════════════════════════════════════════════════════
+
+/// کاروونکي وویل: «د سکن او تیم افشن ټایټل بار ته راوړه ترڅو تل
+/// لاسرسي وړ وي». نو دا درې تڼۍ د هرې پاڼې پر سر پاتې کیږي.
+///
+/// **لیبل چیرې دی؟** ټایټل بار د `Navigator` تر پورته دی، نو
+/// `Tooltip` ورته `Overlay` نه مومي او استثنا اچوي. پرځای یې، د
+/// ماوس د تېرېدو پر مهال نوم **همدې بار کې** د ایکنونو ترڅنګ
+/// ښکاري — نو هیڅ تڼۍ پټه معما نه پاتې کیږي.
+class _Actions extends StatefulWidget {
+  const _Actions();
+
+  @override
+  State<_Actions> createState() => _ActionsState();
+}
+
+class _ActionsState extends State<_Actions> {
+  String? _hint;
+
+  void _setHint(String? h) {
+    if (_hint == h) return;
+    setState(() => _hint = h);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final s = context.watch<AppState>();
+
+    // د پیل او د معرفي پاڼو پر مهال دا تڼۍ معنا نه لري.
+    final ready = !s.booting && !s.rootMissing && s.settings.onboarded;
+    if (!ready) return const SizedBox.shrink();
+
+    final scanning = s.scan != null;
+    final theme = s.settings.theme;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _BarButton(
+          key: AppTitleBar.kScan,
+          icon: Icons.sync_rounded,
+          label: scanning ? 'سکن روان دی…' : 'آرشیف بیا سکن کړه',
+          busy: scanning,
+          onTap: scanning ? null : s.rescanArchive,
+          onHint: _setHint,
+        ),
+        _BarButton(
+          key: AppTitleBar.kTheme,
+          icon: switch (theme) {
+            ThemeChoice.light => Icons.light_mode_rounded,
+            ThemeChoice.dark => Icons.dark_mode_rounded,
+            ThemeChoice.system => Icons.brightness_auto_rounded,
+          },
+          label: 'تیم: ${theme.label}',
+          onTap: () => s.setTheme(switch (theme) {
+            ThemeChoice.light => ThemeChoice.dark,
+            ThemeChoice.dark => ThemeChoice.system,
+            ThemeChoice.system => ThemeChoice.light,
+          }),
+          onHint: _setHint,
+        ),
+        _BarButton(
+          key: AppTitleBar.kAbout,
+          icon: Icons.info_outline_rounded,
+          label: 'زمونږ په اړه',
+          // ۵ = د تنظیماتو «جوړونکی» ډله.
+          onTap: () => s.openSettings(5),
+          onHint: _setHint,
+        ),
+        // د ماوس لاندې تڼۍ نوم — یو سپک، ځای‌نه‌نیوونکی لیبل.
+        AnimatedSize(
+          duration: AppTokens.fast,
+          curve: AppTokens.ease,
+          child: _hint == null
+              ? const SizedBox(height: 20)
+              : Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 6),
+                  child: Text(
+                    _hint!,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BarButton extends StatefulWidget {
+  const _BarButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.onHint,
+    this.busy = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final ValueChanged<String?> onHint;
+  final bool busy;
+
+  @override
+  State<_BarButton> createState() => _BarButtonState();
+}
+
+class _BarButtonState extends State<_BarButton>
+    with SingleTickerProviderStateMixin {
+  bool _over = false;
+  late final AnimationController _spin = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 900));
+
+  @override
+  void didUpdateWidget(covariant _BarButton old) {
+    super.didUpdateWidget(old);
+    _syncSpin();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _syncSpin();
+  }
+
+  void _syncSpin() {
+    if (widget.busy && !_spin.isAnimating) {
+      _spin.repeat();
+    } else if (!widget.busy && _spin.isAnimating) {
+      _spin.stop();
+      _spin.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Semantics(
+      label: widget.label,
+      button: true,
+      child: MouseRegion(
+        cursor: widget.onTap == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        onEnter: (_) {
+          setState(() => _over = true);
+          widget.onHint(widget.label);
+        },
+        onExit: (_) {
+          setState(() => _over = false);
+          widget.onHint(null);
+        },
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: AppTokens.fast,
+            width: 28,
+            height: 26,
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            decoration: BoxDecoration(
+              color: _over
+                  ? cs.onSurface.withValues(alpha: 0.09)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: RotationTransition(
+              turns: _spin,
+              child: Icon(
+                widget.icon,
+                size: 16,
+                color: widget.onTap == null
+                    ? cs.onSurfaceVariant.withValues(alpha: 0.55)
+                    : cs.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  د کړکۍ تڼۍ
+// ═══════════════════════════════════════════════════════════
+
+enum _Glyph { minimize, maximize, close }
+
+/// یوه ګرده تڼۍ — د macOS د ترافیک څراغ په څېر، خو د وینډوز په
+/// ترتیب او **تل ښکاره** ایکن سره.
 class _Light extends StatefulWidget {
   const _Light({
+    super.key,
     required this.color,
     required this.hoverColor,
-    required this.icon,
+    required this.glyph,
     required this.tooltip,
-    required this.show,
     required this.onTap,
   });
 
   final Color color;
   final Color hoverColor;
-  final IconData icon;
+  final _Glyph glyph;
   final String tooltip;
-
-  /// آیا د ټولې کرښې پر سر ماوس دی؟ (macOS ایکنونه یوازې هغه وخت ښیي)
-  final bool show;
   final VoidCallback onTap;
 
   @override
@@ -199,8 +459,6 @@ class _LightState extends State<_Light> {
   Widget build(BuildContext context) {
     // **دلته `Tooltip` مه کاروئ.** ټایټل بار د `Navigator` تر
     // پورته دی، نو `Overlay` ورته نشته او Tooltip استثنا اچوي.
-    // بل خوا، د macOS خپل ترافیک څراغونه هم tooltip نه لري —
-    // ایکن پخپله کافي دی.
     return Semantics(
       label: widget.tooltip,
       button: true,
@@ -209,33 +467,70 @@ class _LightState extends State<_Light> {
         onEnter: (_) => setState(() => _over = true),
         onExit: (_) => setState(() => _over = false),
         child: GestureDetector(
-          // د تڼۍ کلیک باید کړکۍ ونه ښوروي.
           onTap: widget.onTap,
           child: AnimatedContainer(
             duration: AppTokens.fast,
             curve: AppTokens.ease,
-            width: 12,
-            height: 12,
+            width: 14,
+            height: 14,
             decoration: BoxDecoration(
               color: _over ? widget.hoverColor : widget.color,
               shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.black.withValues(alpha: 0.10),
+                color: Colors.black.withValues(alpha: 0.12),
                 width: 0.5,
               ),
             ),
-            child: AnimatedOpacity(
-              duration: AppTokens.fast,
-              opacity: widget.show ? 1 : 0,
-              child: Icon(
-                widget.icon,
-                size: 8.5,
-                color: Colors.black.withValues(alpha: 0.62),
-              ),
+            child: CustomPaint(
+              painter: _GlyphPainter(widget.glyph),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// **د تڼۍ ایکن — پخپله رسم شوی.**
+///
+/// د Material ایکنونه په ۸–۹px کې خړ او نري ښکاري: فونټ یې
+/// د دومره کوچني کچ لپاره نه دی. دلته درې ساده شکلونه په خپله
+/// کرښه رسمیږي — همغه پنډوالی، همغه اندازه، هره کچه کې روښانه.
+class _GlyphPainter extends CustomPainter {
+  const _GlyphPainter(this.glyph);
+  final _Glyph glyph;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = const Color(0xFF14181F).withValues(alpha: 0.78)
+      ..strokeWidth = 1.35
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke
+      ..isAntiAlias = true;
+
+    final c = Offset(size.width / 2, size.height / 2);
+    const r = 3.1; // د شکل نیمه پلنوالی
+
+    switch (glyph) {
+      case _Glyph.minimize:
+        canvas.drawLine(Offset(c.dx - r, c.dy), Offset(c.dx + r, c.dy), p);
+      case _Glyph.maximize:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: c, width: r * 2, height: r * 2),
+            const Radius.circular(1),
+          ),
+          p,
+        );
+      case _Glyph.close:
+        canvas.drawLine(
+            Offset(c.dx - r, c.dy - r), Offset(c.dx + r, c.dy + r), p);
+        canvas.drawLine(
+            Offset(c.dx + r, c.dy - r), Offset(c.dx - r, c.dy + r), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GlyphPainter old) => old.glyph != glyph;
 }

@@ -28,14 +28,14 @@ void main() {
   Finder globalSearch() => find.byWidgetPredicate(
       (w) => w is SearchBox && w.hint.contains('په ټول آرشیف'));
 
-  /// د تیم تڼۍ — یوازې په پورتني بار کې ده.
+  /// **د تیم تڼۍ اوس دلته نشته** — ټایټل بار ته لاړه، ترڅو په
+  /// هره پاڼه کې لاسرسي وړ وي (وګورئ `title_bar_test.dart`).
   Finder themeToggle() => find.byWidgetPredicate((w) =>
       w is IconButton && '${w.tooltip}'.startsWith('تیم:'));
 
   testWidgets('په ډاشبورډ کې پورتنی بار شته', (t) async {
     await boot(t);
     expect(globalSearch(), findsOneWidget);
-    expect(themeToggle(), findsOneWidget);
   });
 
   testWidgets('په نورو پاڼو کې پورتنی بار نشته', (t) async {

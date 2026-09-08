@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
@@ -678,6 +679,28 @@ class IoBackend implements ArchiveBackend {
     final f = File(path);
     return await f.exists() ? f.readAsBytes() : null;
   }
+  @override
+  Future<String?> saveFileAs({
+    required String fileName,
+    required List<int> bytes,
+    String? initialDirectory,
+    String mimeType = 'application/octet-stream',
+  }) async {
+    final uri = await FilePicker.saveFile(
+      dialogTitle: 'چیرې یې ثبت کړو؟',
+      fileName: fileName,
+      bytes: Uint8List.fromList(bytes),
+      mimeType: mimeType,
+      initialDirectory: initialDirectory,
+    );
+    if (uri == null) return null; // کاروونکي لغوه کړه
+    try {
+      return uri.toFilePath(windows: Platform.isWindows);
+    } catch (_) {
+      return uri.toString();
+    }
+  }
+
   @override
   Future<String?> writeBytes(String path, List<int> bytes) async {
     try {

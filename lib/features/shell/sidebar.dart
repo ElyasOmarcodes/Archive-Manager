@@ -192,7 +192,6 @@ class _Brand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = context.read<AppState>();
     final cs = Theme.of(context).colorScheme;
 
     return Container(
@@ -238,8 +237,11 @@ class _Brand extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             color: cs.onSurface,
                             height: 1.3)),
+                    // کاروونکي وغوښتل: د نوم لاندې د نسخې پر ځای د
+                    // جوړونکي نوم. نسخه بایللې نه ده — د تنظیماتو
+                    // «په اړه» ډله کې یې بشپړه ښیي.
                     Text(
-                      'v$kAppVersion · ${driveLabel(s.settings.archiveRoot)}',
+                      'By: $kAppAuthor',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,

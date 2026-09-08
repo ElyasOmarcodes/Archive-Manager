@@ -249,6 +249,16 @@ class DemoBackend implements ArchiveBackend {
   @override
   Future<String?> writeBytes(String path, List<int> bytes) async => null;
 
+  // د نندارې نسخه فایل سیسټم نه لري — نو ډایلوګ هم نشته.
+  @override
+  Future<String?> saveFileAs({
+    required String fileName,
+    required List<int> bytes,
+    String? initialDirectory,
+    String mimeType = 'application/octet-stream',
+  }) async =>
+      null;
+
   // ═══════════════════════════════════════════════════════
   //  نمونه ډیټا
   // ═══════════════════════════════════════════════════════

@@ -7,6 +7,7 @@ import '../../core/theme/tokens.dart';
 import '../../data/platform/backend.dart';
 import '../../data/repository/app_state.dart';
 import '../../widgets/common.dart';
+import 'developer_card.dart';
 
 /// **د تنظیماتو پاڼه.**
 ///
@@ -44,13 +45,15 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  /// کومه ډله پرانیستې ده. د پاڼې تر بدلون روسته بیرته «بڼه» ته
-  /// نه ځي — `CollapsedRegistry` په څېر یو ساده جامد حافظه.
-  static int _section = 0;
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final st = context.watch<AppState>();
+
+    // کومه ډله پرانیستې ده — په `AppState` کې پرته ده، نو د پاڼې
+    // تر بدلون روسته هم پاتې کیږي، او د ټایټل بار «په اړه» تڼۍ
+    // کولی شي سیده د جوړونکي ډلې ته ورشي.
+    final section = st.settingsSection.clamp(0, 5);
 
     final sections = <_Section>[
       const _Section('بڼه', Icons.palette_rounded,
@@ -62,6 +65,7 @@ class _SettingsPageState extends State<SettingsPage> {
       const _Section('لنډیز', Icons.insights_rounded,
           'څومره پیښې، فایلونه او ځای'),
       const _Section('په اړه', Icons.info_rounded, 'نسخه او د پټتیا تګلاره'),
+      const _Section('جوړونکی', Icons.badge_rounded, 'د پروګرام جوړونکی او اړیکه'),
     ];
 
     return LayoutBuilder(builder: (context, c) {
@@ -70,19 +74,20 @@ class _SettingsPageState extends State<SettingsPage> {
       final wide = c.maxWidth >= 860;
       final rail = _Rail(
         sections: sections,
-        selected: _section,
+        selected: section,
         vertical: wide,
-        onSelect: (i) => setState(() => _section = i),
+        onSelect: st.setSettingsSection,
       );
 
       final content = _SectionBody(
-        section: sections[_section],
-        child: switch (_section) {
+        section: sections[section],
+        child: switch (section) {
           0 => const _AppearanceSection(),
           1 => const _CalendarSection(),
           2 => const _ArchiveSection(),
           3 => const _StatsSection(),
-          _ => const _AboutSection(),
+          4 => const _AboutSection(),
+          _ => const DeveloperCard(),
         },
       );
 
