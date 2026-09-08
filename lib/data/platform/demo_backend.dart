@@ -56,6 +56,11 @@ class DemoBackend implements ArchiveBackend {
     _ready = true;
   }
 
+  DateTime? _scannedAt;
+
+  @override
+  Future<DateTime?> lastScanAt(String root) async => _scannedAt;
+
   @override
   Stream<ScanProgress> rescan(String root) async* {
     await openIndex(root);
@@ -64,6 +69,7 @@ class DemoBackend implements ArchiveBackend {
       await Future.delayed(const Duration(milliseconds: 30));
       yield ScanProgress(scanned: i * 4, found: i, currentPath: '$root\\...');
     }
+    _scannedAt = DateTime.now();
     yield ScanProgress(scanned: n * 4, found: n, done: true);
   }
 
@@ -248,6 +254,9 @@ class DemoBackend implements ArchiveBackend {
   /// ویب کې فایل سیسټم نشته.
   @override
   Future<String?> writeBytes(String path, List<int> bytes) async => null;
+
+  @override
+  Future<String?> defaultExportDir() async => null;
 
   // د نندارې نسخه فایل سیسټم نه لري — نو ډایلوګ هم نشته.
   @override

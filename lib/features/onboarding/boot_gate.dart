@@ -8,15 +8,17 @@ import '../../core/theme/tokens.dart';
 import '../../data/repository/app_state.dart';
 import '../../widgets/common.dart';
 import '../shell/app_shell.dart';
+import 'expired_page.dart';
 import 'intro_page.dart';
 import 'missing_root_page.dart';
 
 /// **د پیل دروازه** — پرېکړه کوي چې کاروونکی کومې پاڼې ته ولاړ شي.
 ///
 /// ۱. لا تر اوسه پیل روان دی      → د بارېدو پاڼه
-/// ۲. مخکینی مسیر ورک دی          → د بیا هڅې پاڼه
-/// ۳. لومړی ځل دی                 → معرفي + د مسیر ټاکنه
-/// ۴. هر څه سم دي                 → پنل
+/// ۲. پروګرام تړل شوی دی          → د اکسپایر پاڼه
+/// ۳. مخکینی مسیر ورک دی          → د بیا هڅې پاڼه
+/// ۴. لومړی ځل دی                 → معرفي + د مسیر ټاکنه
+/// ۵. هر څه سم دي                 → پنل
 class BootGate extends StatelessWidget {
   const BootGate({super.key});
 
@@ -30,6 +32,9 @@ class BootGate extends StatelessWidget {
       switchOutCurve: AppTokens.ease,
       child: switch (true) {
         _ when s.booting => const _Splash(key: ValueKey('splash')),
+        // **لاک تر هر څه مخکې.** که دروازه تړلې وي، هیڅ پاڼه نه
+        // پرانیستل کیږي — نه پنل، نه معرفي.
+        _ when s.locked => const ExpiredPage(key: ValueKey('expired')),
         _ when s.rootMissing => const MissingRootPage(key: ValueKey('missing')),
         _ when !s.settings.onboarded || s.settings.archiveRoot == null =>
           const IntroPage(key: ValueKey('intro')),

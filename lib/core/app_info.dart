@@ -8,7 +8,7 @@
 /// ګوري چې له `pubspec.yaml` سره سمه ده.
 library;
 
-const String kAppVersion = '1.6.0';
+const String kAppVersion = '1.7.0';
 
 const String kAppName = 'د آرشیف چټک مدیر';
 

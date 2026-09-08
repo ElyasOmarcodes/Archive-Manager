@@ -155,7 +155,8 @@ void main() {
       for (final k in [
         AppTitleBar.kScan,
         AppTitleBar.kTheme,
-        AppTitleBar.kAbout
+        AppTitleBar.kAbout,
+        AppTitleBar.kNewEvent,
       ]) {
         expect(find.byKey(k), findsOneWidget, reason: '${p.name}: $k');
       }
@@ -185,6 +186,32 @@ void main() {
     expect(s.page, AppPage.settings);
     expect(s.settingsSection, 5);
     expect(find.text('الیاس عمر'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('د جمع تڼۍ د نوې پیښې ډایلوګ پرانیزي', (t) async {
+    // کاروونکي وویل: «د ایکنونو ښي طرف ته یو عمودي فاصل خط، بیا
+    // تر دې خط روسته د جمع ایکن».
+    AppTitleBar.debugForceShow = true;
+    addTearDown(() => AppTitleBar.debugForceShow = false);
+    await t.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    final s = AppState(DemoBackend());
+    await s.boot();
+    await t.pumpWidget(
+        ChangeNotifierProvider.value(value: s, child: const ArchiveApp()));
+    await t.pumpAndSettle();
+
+    // جمع تر «په اړه» ښي خوا ته ده (دا ډله په LTR کې ترتیب شوې)
+    final plus = t.getCenter(find.byKey(AppTitleBar.kNewEvent)).dx;
+    final about = t.getCenter(find.byKey(AppTitleBar.kAbout)).dx;
+    expect(plus, greaterThan(about));
+
+    await t.tap(find.byKey(AppTitleBar.kNewEvent));
+    await t.pumpAndSettle();
+    expect(find.text('نوې پیښه ثبت کړئ'), findsOneWidget,
+        reason: 'ډایلوګ باید پرانیستل شي — بار د Navigator تر پورته دی');
     expect(t.takeException(), isNull);
   });
 }

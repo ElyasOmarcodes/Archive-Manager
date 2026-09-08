@@ -854,13 +854,25 @@ class _ExportPdfButtonState extends State<_ExportPdfButton> {
       String? saved;
       var canceled = false;
       if (s.backend.isReal) {
+        // **کوم مسیر لومړی وښیو؟**
+        //
+        // ۱. هغه چې کاروونکي وروستی ځل وټاکه (تنظیماتو کې پروت دی)
+        // ۲. که نه وي: `Documents/د آرشیف نهایي فایلونه`
+        //
+        // د پیښې پوښۍ نه ښیو — کاروونکي وویل چې وروستی کارول شوی
+        // مسیر باید ډیفالټ وي.
+        final start = s.settings.exportDir ??
+            await s.backend.defaultExportDir();
+
         saved = await s.backend.saveFileAs(
           fileName: name,
           bytes: bytes,
-          initialDirectory: widget.event.folderPath,
+          initialDirectory: start,
           mimeType: kind == ExportKind.pdf ? 'application/pdf' : 'application/zip',
         );
         canceled = saved == null;
+        // راتلونکی ځل هماغه پوښۍ پرانیزي.
+        if (saved != null) await s.rememberExportDir(p.dirname(saved));
       } else {
         saved = await s.backend
             .writeBytes(p.join(widget.event.folderPath, name), bytes);
@@ -884,7 +896,15 @@ class _ExportPdfButtonState extends State<_ExportPdfButton> {
     } catch (e) {
       if (mounted) _say(messenger, 'اکسپورټ ناکام شو: $e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      // **دا `mounted` ته نه ګوري.** کاروونکي وویل: «که د وينډوز
+      // اکسپلورر بیرته کنسل کړو نو اکسپورټ بټن باندې دوام لرونکی
+      // پروګرس راځي چې بیا د کلیک وړ نه وي». علت دا و چې د حالت
+      // بیا‌ټاکنه یوازې هغه وخت کېده چې ویجټ ژوندی وي — نو که
+      // کاروونکی د ډایلوګ پر مهال بلې پاڼې ته تللی و، بېرغ تر ابده
+      // «بوخت» پاتې کېده. اوس بېرغ **تل** پاک شي؛ یوازې د پردې
+      // تازه کول د `mounted` تابع دي.
+      _busy = false;
+      if (mounted) setState(() {});
     }
   }
 

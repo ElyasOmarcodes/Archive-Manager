@@ -1,7 +1,7 @@
 name: archive_manager
 description: "د آرشیف چټک مدیر — Archive Quick Manager"
 publish_to: 'none'
-version: 1.6.0+1
+version: 1.7.0+1
 
 environment:
   sdk: ^3.13.2
@@ -24,11 +24,15 @@ dependencies:
 
   # --- Files & paths ---
   path: ^1.9.0
+  # د وینډوز د فایل صفتونو لپاره (پټول/ښودل) — `SetFileAttributesW`
+  ffi: ^2.1.0
   path_provider: ^2.1.4
   file_picker: ^12.2.0
   desktop_drop: ^0.8.4
   cross_file: ^0.3.4+2
   url_launcher: ^6.3.0
+  # د کنټرول فایل لوستل (د پروګرام د فعالېدو حالت) — ویب او ډیسکټاپ
+  http: ^1.2.2
   mime: ^1.0.6
 
   # --- UI ---

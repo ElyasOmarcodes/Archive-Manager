@@ -649,7 +649,7 @@ class EventPdf {
   static String cleanText(String s) => _t(s);
 
   static pw.Widget _metadataTable(EventMetadata e) => _table(
-        header: const ['ډګر', 'ارزښت'],
+        header: const ['برخه', 'ارزښت'],
         widths: const {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(2.2)},
         rows: [
           for (final r in metadataRows(e)) [r.key, _t(r.value)],

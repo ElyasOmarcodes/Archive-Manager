@@ -11,6 +11,7 @@ class FsEntry {
     this.modified,
     this.childCount,
     this.isEventFolder = false,
+    this.isHidden = false,
   });
 
   final String name;
@@ -24,6 +25,11 @@ class FsEntry {
 
   /// آیا دا فولډر یوه ثبت شوې پیښه ده؟ (`metadata.json` لري)
   final bool isEventFolder;
+
+  /// آیا دا توکی پټ دی؟ (د وینډوز پټ صفت، یا د پروګرام خپل ثبت
+  /// فایلونه). اکسپلورر یې یوازې هغه وخت ښیي چې «پټ فایلونه
+  /// وښایه» فعال وي.
+  final bool isHidden;
 
   MediaKind get kind => isDirectory ? MediaKind.other : MediaKind.ofPath(name);
 
@@ -140,6 +146,14 @@ abstract class ArchiveBackend {
   /// د ایندکس پرانیستل / جوړول.
   Future<void> openIndex(String root);
 
+  /// دا آرشیف وروستی ځل کله سکن شوی؟ که هیڅکله، `null`.
+  ///
+  /// **ولې پکار ده؟** ځکه پروګرام باید **هر ځل** سکن ونه کړي.
+  /// کاروونکي وویل: «یو ځل چې لومړي کې اسکن شي، بیا اسکن باید
+  /// ضرورت نه وي — ترڅو چټک وي». نو پیل یوازې هغه وخت سکن کوي
+  /// چې دا `null` وي؛ نور وخت ایندکس سیده کارول کیږي.
+  Future<DateTime?> lastScanAt(String root);
+
   // ── پوښتنې ──────────────────────────────────────────────
   Future<List<EventMetadata>> search(EventQuery q);
   Future<FacetCounts> facets(EventQuery q);
@@ -212,6 +226,13 @@ abstract class ArchiveBackend {
   /// نشته)، نو `null` راګرځوي.
   Future<String?> writeBytes(String path, List<int> bytes);
 
+  /// **د اکسپورټ ډیفالټ پوښۍ** — که کاروونکي لا کوم مسیر نه وي
+  /// ټاکلی.
+  ///
+  /// کاروونکي وویل: «اوسنی ډیفالټ مسیر باید د ډاکمنټ فولډر دننه
+  /// «د آرشیف نهایي فایلونه» وي». پوښۍ که نه وي، جوړیږي.
+  Future<String?> defaultExportDir();
+
   /// **د وینډوز خپل «Save As» ډایلوګ** — کاروونکی مسیر او نوم
   /// ټاکي، بیا فایل هلته لیکل کیږي.
   ///
@@ -255,6 +276,9 @@ class AppSettings {
     this.showHiddenFiles = false,
     this.pashtoMonthNames = false,
     this.uiScale = 1.0,
+    this.exportDir,
+    this.licenseLocked = false,
+    this.licenseLockedAt,
   });
 
   String? archiveRoot;
@@ -277,6 +301,23 @@ class AppSettings {
   /// پورته د لوستلو لپاره اسانه، خو لږ شیان ښکاري.
   double uiScale;
 
+  /// **د اکسپورټ وروستی مسیر.**
+  ///
+  /// کاروونکي وویل: «کله چې د وينډوز اکسپلورر پرانیستل شي او
+  /// کاروونکی یو مسیر انتخاب کړي، راتلونکی کې باید هماغه مسیر په
+  /// ډیفالټ بڼه وي». که تش وي، `defaultExportDir()` کارول کیږي.
+  String? exportDir;
+
+  /// **آیا پروګرام تړل شوی دی؟**
+  ///
+  /// د کنټرول فایل (وګورئ `LicenseGate`) دا ټاکي. دلته یې ساتو، نو
+  /// چې یو ځل تړل شو، بیا پرانیستل یې نه خلاصوي — یوازې د سرور
+  /// نوې اجازه یې خلاصوي.
+  bool licenseLocked;
+
+  /// کله تړل شو؟ (ISO)
+  String? licenseLockedAt;
+
   /// د منلو وړ کچې — د تنظیماتو پاڼه یې کاروي.
   static const List<(double, String)> scaleOptions = [
     (0.80, 'ډېر کوچنی'),
@@ -295,6 +336,9 @@ class AppSettings {
         'showHiddenFiles': showHiddenFiles,
         'pashtoMonthNames': pashtoMonthNames,
         'uiScale': uiScale,
+        'exportDir': exportDir,
+        'licenseLocked': licenseLocked,
+        'licenseLockedAt': licenseLockedAt,
       };
 
   static AppSettings fromJson(Map<String, dynamic> j) => AppSettings(
@@ -308,5 +352,8 @@ class AppSettings {
         // د زړو تنظیماتو فایلونو لپاره ډیفالټ، او د ناسمو ارزښتونو
         // پر وړاندې ساتنه — ګنې یو ناسم عدد ټول UI ناکاره کوي.
         uiScale: ((j['uiScale'] as num?)?.toDouble() ?? 1.0).clamp(0.6, 1.6),
+        exportDir: j['exportDir'] as String?,
+        licenseLocked: j['licenseLocked'] as bool? ?? false,
+        licenseLockedAt: j['licenseLockedAt'] as String?,
       );
 }

@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,12 +16,20 @@ import '../index/index_db.dart';
 import '../models/models.dart';
 import '../models/query.dart';
 import 'backend.dart';
+import 'file_hiding.dart';
 
 /// **ریښتینی بک‌اینډ** — وینډوز او لینکس.
 ///
 /// د فایل سیسټم ټولې چارې دلته دي. د درانه کار (سکن) لپاره یو جلا
 /// `Isolate` کارول کیږي، نو د ۵TB ډرایو سکن هم UI نه ځنډوي.
 class IoBackend implements ArchiveBackend {
+  IoBackend({this.stateDirOverride});
+
+  /// **یوازې د ازموینې لپاره.** په ازموینو کې `path_provider` نشته،
+  /// نو د ایندکس او تنظیماتو پوښۍ له بهره ورکول کیږي.
+  @visibleForTesting
+  final String? stateDirOverride;
+
   IndexDb? _index;
   String? _root;
 
@@ -49,11 +58,16 @@ class IoBackend implements ArchiveBackend {
   //  تنظیمات
   // ═══════════════════════════════════════════════════════
 
-  Future<File> _settingsFile() async {
-    final dir = await getApplicationSupportDirectory();
+  Future<Directory> _stateDir() async {
+    final dir = stateDirOverride != null
+        ? Directory(stateDirOverride!)
+        : await getApplicationSupportDirectory();
     await dir.create(recursive: true);
-    return File(p.join(dir.path, 'settings.json'));
+    return dir;
   }
+
+  Future<File> _settingsFile() async =>
+      File(p.join((await _stateDir()).path, 'settings.json'));
 
   @override
   Future<AppSettings> loadSettings() async {
@@ -167,8 +181,7 @@ class IoBackend implements ArchiveBackend {
   Future<void> openIndex(String root) async {
     _root = root;
     _index?.dispose();
-    final dir = await getApplicationSupportDirectory();
-    await dir.create(recursive: true);
+    final dir = await _stateDir();
     // هر آرشیف خپل ایندکس لري — نو د څو ډرایوونو بدلول ډیټا نه ګډوي.
     final key = root.hashCode.toRadixString(16);
     _index = IndexDb.open(p.join(dir.path, 'index_$key.db'));
@@ -188,17 +201,25 @@ class IoBackend implements ArchiveBackend {
   Stream<ScanProgress> rescan(String root) async* {
     final controller = StreamController<ScanProgress>();
     final rp = ReceivePort();
-    final found = <EventMetadata>[];
+    final found = <_FoundEvent>[];
 
-    final iso = await Isolate.spawn(_scanIsolate, (rp.sendPort, root));
+    // هغه څه چې ایندکس یې لا پېژني — نو سکن یوازې توپیر ولټوي.
+    final known = _db.folderStamps();
+
+    // یو ځل، د لومړي سکن پر مهال، ټول زاړه ثبت فایلونه هم پټیږي —
+    // کاروونکي وویل: «داسې یې کړه چې دا ځل د اسکن سره پروګرام ټول
+    // هیډین کړي».
+    final hideAll = _db.meta('hidden_done') != '1';
+
+    final iso =
+        await Isolate.spawn(_scanIsolate, (rp.sendPort, root, known, hideAll));
 
     rp.listen((msg) {
       if (msg is _ScanTick) {
         controller.add(ScanProgress(
             scanned: msg.scanned, found: msg.found, currentPath: msg.path));
       } else if (msg is _ScanResult) {
-        found.addAll(msg.events.map((j) => EventMetadata.fromJson(
-            j.meta, folderPath: j.folder)));
+        found.addAll(msg.events);
         controller.add(ScanProgress(
             scanned: msg.scanned, found: found.length, done: false));
         controller.close();
@@ -209,10 +230,32 @@ class IoBackend implements ArchiveBackend {
 
     yield* controller.stream;
 
-    // ایندکس یوه معامله کې ډکوو — تر یو-یو ډېر چټک دی.
-    _db.clear();
-    _db.upsertAll(found);
+    // ── ۱ · هغه پیښې چې ورکې شوې دي ──
+    final live = found.map((e) => e.folder).toSet();
+    _db.dropFolders(known.keys.where((f) => !live.contains(f)));
+
+    // ── ۲ · یوازې بدل شوي/نوي ──
+    final changed = found.where((e) => e.meta != null).toList();
+    final parsed = changed
+        .map((e) => EventMetadata.fromJson(e.meta!, folderPath: e.folder))
+        .toList();
+    _db.upsertAll(parsed);
+    for (var i = 0; i < changed.length; i++) {
+      _db.setStamp(changed[i].folder, changed[i].mtime, parsed[i].id);
+    }
+
+    if (hideAll) _db.setMeta('hidden_done', '1');
+    _db.setMeta('scanned_root', root);
+    _db.setMeta('last_scan_at', '${DateTime.now().millisecondsSinceEpoch}');
+
     yield ScanProgress(scanned: found.length, found: found.length, done: true);
+  }
+
+  @override
+  Future<DateTime?> lastScanAt(String root) async {
+    if (_db.meta('scanned_root') != root) return null;
+    final ms = int.tryParse(_db.meta('last_scan_at') ?? '');
+    return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -302,8 +345,24 @@ class IoBackend implements ArchiveBackend {
           .writeAsString(html, flush: true);
     }
 
-    // ۲) ایندکس تازه کړه
+    // ۲) دواړه د ثبت فایلونه پټ کړه.
+    //
+    // کاروونکي وویل: «ترڅو کاروونکو ته محیط صفا وي». پاڼه
+    // (`index.html`) او ضمیمې ښکاره پاتې کیږي — یوازې د پروګرام
+    // خپل ثبت پټیږي.
+    FileHiding.hide(p.join(e.folderPath, metaFile));
+    FileHiding.hide(p.join(e.folderPath, contentFile));
+
+    // ۳) ایندکس تازه کړه
     _db.upsert(e);
+    // مهر تازه کړه، نو راتلونکی سکن دا پیښه بېځایه بیا ونه لولي.
+    try {
+      final st = await File(p.join(e.folderPath, metaFile)).stat();
+      _db.setStamp(
+          e.folderPath, st.modified.millisecondsSinceEpoch, e.id);
+    } catch (_) {
+      // مهر یو چټکوالی دی، نه یوه اړتیا.
+    }
   }
 
   @override
@@ -499,7 +558,16 @@ class IoBackend implements ArchiveBackend {
       try {
         final name = p.basename(ent.path);
         // د پروګرام خپل فولډر کاروونکي ته نه ښیو
-        if (name.startsWith('.') || name == supportDir) continue;
+        if (name == supportDir) continue;
+
+        // **پټ توکي.** د پروګرام خپل ثبت فایلونه (`metadata.json`،
+        // `content.json`) او هر هغه څه چې وینډوز یې پټ ګڼي. دلته
+        // یې نه غورځوو — یوازې نښه کوو، نو اکسپلورر کې د «پټ
+        // فایلونه وښایه» افشن کار وکړي.
+        final hidden = name == metaFile ||
+            name == contentFile ||
+            FileHiding.isHidden(ent.path, name);
+
         final st = await ent.stat();
         if (st.type == FileSystemEntityType.directory) {
           final isEvent =
@@ -510,6 +578,7 @@ class IoBackend implements ArchiveBackend {
             isDirectory: true,
             modified: st.modified,
             isEventFolder: isEvent,
+            isHidden: hidden,
           ));
         } else {
           out.add(FsEntry(
@@ -518,6 +587,7 @@ class IoBackend implements ArchiveBackend {
             isDirectory: false,
             sizeBytes: st.size,
             modified: st.modified,
+            isHidden: hidden,
           ));
         }
       } catch (_) {
@@ -679,6 +749,19 @@ class IoBackend implements ArchiveBackend {
     final f = File(path);
     return await f.exists() ? f.readAsBytes() : null;
   }
+  /// د اکسپورټ ډیفالټ پوښۍ: `Documents/د آرشیف نهایي فایلونه`.
+  @override
+  Future<String?> defaultExportDir() async {
+    try {
+      final docs = await getApplicationDocumentsDirectory();
+      final dir = Directory(p.join(docs.path, 'د آرشیف نهایي فایلونه'));
+      if (!await dir.exists()) await dir.create(recursive: true);
+      return dir.path;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Future<String?> saveFileAs({
     required String fileName,
@@ -686,12 +769,20 @@ class IoBackend implements ArchiveBackend {
     String? initialDirectory,
     String mimeType = 'application/octet-stream',
   }) async {
+    // **پام: ناسم لومړنی مسیر ډایلوګ وژني.** د وینډوز پلټونکی
+    // د `SHCreateItemFromParsingName` په واسطه پوښۍ پرانیزي؛ که
+    // مسیر نه وي، استثنا اچوي — او هغه استثنا د پلټونکي په خپل
+    // isolate کې پیښیږي، نو **ځواب یې هیڅکله نه راځي** او تڼۍ تر
+    // ابده «بوخته» پاتې کیږي. نو مسیر مخکې ګورو.
+    String? initial = initialDirectory;
+    if (initial != null && !await Directory(initial).exists()) initial = null;
+
     final uri = await FilePicker.saveFile(
       dialogTitle: 'چیرې یې ثبت کړو؟',
       fileName: fileName,
       bytes: Uint8List.fromList(bytes),
       mimeType: mimeType,
-      initialDirectory: initialDirectory,
+      initialDirectory: initial,
     );
     if (uri == null) return null; // کاروونکي لغوه کړه
     try {
@@ -727,9 +818,14 @@ class _ScanTick {
 }
 
 class _FoundEvent {
-  const _FoundEvent(this.folder, this.meta);
+  const _FoundEvent(this.folder, this.mtime, this.meta);
   final String folder;
-  final Map<String, dynamic> meta;
+
+  /// د `metadata.json` وروستی بدلون (ms) — د پرګمنټ سکن مهر.
+  final int mtime;
+
+  /// که `null` وي، فایل بدل شوی نه دی — نو ونه لوستل شو.
+  final Map<String, dynamic>? meta;
 }
 
 class _ScanResult {
@@ -740,11 +836,18 @@ class _ScanResult {
 
 /// په جلا Isolate کې چلیږي — نو د زرګونو فولډرونو ګرځېدل UI نه ځنډوي.
 ///
-/// **مهمه اصلاح:** کله چې یو فولډر کې `metadata.json` وموندل شي،
-/// د هغه دننه نور نه ګرځو (`attachments/` کې ممکن زرګونه فایلونه وي،
-/// خو مونږ ورته اړتیا نه لرو). دا د سکن وخت ډراماتیک کموي.
-Future<void> _scanIsolate((SendPort, String) args) async {
-  final (send, root) = args;
+/// **۱ · د پیښې دننه نه ګرځو.** کله چې یو فولډر کې `metadata.json`
+/// وموندل شي، `attachments/` ته نه ور ننوځو — هلته ممکن زرګونه
+/// فایلونه وي چې مونږ ورته اړتیا نه لرو.
+///
+/// **۲ · پرګمنټ سکن.** کاروونکي وویل: «ولې هر ځل چې پروګرام
+/// خلاصوو ټول ډیټابیس اسکن کیږي؟» — نو اوس د هر فولډر مهر
+/// (`mtime`) راځي. که مهر هماغه پخوانی وي، **فایل هیڅ نه لوستل
+/// کیږي**: نه I/O، نه JSON تجزیه، نه د ایندکس لیکل. د ۵۰ زرو
+/// پیښو آرشیف کې دا د لسو ثانیو کار یوې ثانیې ته راکموي.
+Future<void> _scanIsolate(
+    (SendPort, String, Map<String, int>, bool) args) async {
+  final (send, root, known, hideAll) = args;
   var scanned = 0;
   final events = <_FoundEvent>[];
 
@@ -762,10 +865,24 @@ Future<void> _scanIsolate((SendPort, String) args) async {
       final metaFile = File(metaPath);
 
       if (await metaFile.exists()) {
+        final mtime = (await metaFile.stat()).modified.millisecondsSinceEpoch;
+
+        // د ثبت فایلونه پټ کړه — نوي تل، زاړه یو ځل.
+        if (hideAll || known[current] != mtime) {
+          FileHiding.hide(metaPath);
+          FileHiding.hide(p.join(current, IoBackend.contentFile));
+        }
+
+        // بدل شوی نه دی — بس مهر یې بېرته ورکوو.
+        if (known[current] == mtime) {
+          events.add(_FoundEvent(current, mtime, null));
+          continue;
+        }
+
         try {
           final json = jsonDecode(await metaFile.readAsString());
           if (json is Map<String, dynamic>) {
-            events.add(_FoundEvent(current, json));
+            events.add(_FoundEvent(current, mtime, json));
           }
         } catch (_) {
           // خراب JSON — دا پیښه پرېږده، سکن روان وساته.

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/date/pashto_calendar.dart';
 import '../../core/theme/tokens.dart';
 import '../../data/platform/backend.dart';
 import '../../data/repository/app_state.dart';
+import '../../main.dart';
+import '../editor/new_event_dialog.dart';
 
 import 'window_controls.dart'
     if (dart.library.io) 'window_controls_io.dart';
@@ -63,6 +66,8 @@ class AppTitleBar extends StatefulWidget {
   static const kTheme = ValueKey('titlebar-theme');
   @visibleForTesting
   static const kAbout = ValueKey('titlebar-about');
+  @visibleForTesting
+  static const kNewEvent = ValueKey('titlebar-new-event');
 
   /// **یوازې د ازموینې لپاره.** که ټاکل شوی وي، د کړکۍ ریښتینی
   /// عمل نه ترسره کیږي — یوازې نوم یې دې فعالیت ته ورکول کیږي.
@@ -76,6 +81,10 @@ class AppTitleBar extends StatefulWidget {
 }
 
 class _AppTitleBarState extends State<AppTitleBar> {
+  /// آیا ماوس د بار پر سر دی؟ (د macOS ترافیک څراغونه یوازې هغه
+  /// وخت خپل ایکنونه ښیي — کاروونکي وغوښتل چې همدا چلند بیرته راشي)
+  bool _hovered = false;
+
   /// د سکرین‌شاټ لپاره یې په ویب کې هم ښکاره کولی شو:
   /// `flutter build web --dart-define=FORCE_TITLE_BAR=true`
   static const _force = bool.fromEnvironment('FORCE_TITLE_BAR');
@@ -104,7 +113,15 @@ class _AppTitleBarState extends State<AppTitleBar> {
                   BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
             ),
           ),
-          child: Stack(
+          // **ولې دلته `MouseRegion`؟** د کړکۍ تڼۍ خپل ایکنونه
+          // یوازې هغه وخت ښیي چې ماوس **د ټول بار** پر سر وي —
+          // دقیقاً لکه macOS. دا ویجټ یوازې د ماوس تګ‌راتګ اوري،
+          // د کلیک په ډګر کې برخه نه اخلي، نو د تڼیو چټکوالی یې
+          // نه ورانوي.
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _hovered = true),
+            onExit: (_) => setState(() => _hovered = false),
+            child: Stack(
             children: [
               // ── ۱ · د کش کولو پوړ (تر ټولو لاندې) ──
               //
@@ -171,6 +188,8 @@ class _AppTitleBarState extends State<AppTitleBar> {
                         // د وینډوز ترتیب: ښکته · لوی · تړل
                         _Light(
                           key: AppTitleBar.kMinimize,
+                          show: _hovered,
+                          glyphColor: cs.surfaceContainer,
                           color: const Color(0xFFFEBC2E),
                           hoverColor: const Color(0xFFDEA123),
                           glyph: _Glyph.minimize,
@@ -180,6 +199,8 @@ class _AppTitleBarState extends State<AppTitleBar> {
                         const SizedBox(width: 8),
                         _Light(
                           key: AppTitleBar.kMaximize,
+                          show: _hovered,
+                          glyphColor: cs.surfaceContainer,
                           color: const Color(0xFF28C840),
                           hoverColor: const Color(0xFF1DAD2B),
                           glyph: _Glyph.maximize,
@@ -191,6 +212,8 @@ class _AppTitleBarState extends State<AppTitleBar> {
                         // «تړل» تر ټولو څنډې ته — لکه وینډوز
                         _Light(
                           key: AppTitleBar.kClose,
+                          show: _hovered,
+                          glyphColor: cs.surfaceContainer,
                           color: const Color(0xFFFF5F57),
                           hoverColor: const Color(0xFFE0443E),
                           glyph: _Glyph.close,
@@ -203,6 +226,7 @@ class _AppTitleBarState extends State<AppTitleBar> {
                 ),
               ),
             ],
+            ),
           ),
         ),
       ),
@@ -257,8 +281,10 @@ class _ActionsState extends State<_Actions> {
     final cs = Theme.of(context).colorScheme;
     final s = context.watch<AppState>();
 
-    // د پیل او د معرفي پاڼو پر مهال دا تڼۍ معنا نه لري.
-    final ready = !s.booting && !s.rootMissing && s.settings.onboarded;
+    // د پیل، د معرفي او د **تړل شوي** حالت پر مهال دا تڼۍ معنا نه
+    // لري — یوازې د کړکۍ تڼۍ پاتې کیږي (نو کاروونکی کړکۍ وتړلی شي).
+    final ready =
+        !s.booting && !s.rootMissing && !s.locked && s.settings.onboarded;
     if (!ready) return const SizedBox.shrink();
 
     final scanning = s.scan != null;
@@ -270,7 +296,11 @@ class _ActionsState extends State<_Actions> {
         _BarButton(
           key: AppTitleBar.kScan,
           icon: Icons.sync_rounded,
-          label: scanning ? 'سکن روان دی…' : 'آرشیف بیا سکن کړه',
+          // پروګرام نور هر ځل نه سکن کوي (وګورئ `AppState.boot`)،
+          // نو کاروونکي ته وایو چې وروستی سکن کله و.
+          label: scanning
+              ? 'سکن روان دی…'
+              : 'آرشیف بیا سکن کړه${_since(s.lastScan)}',
           busy: scanning,
           onTap: scanning ? null : s.rescanArchive,
           onHint: _setHint,
@@ -298,6 +328,33 @@ class _ActionsState extends State<_Actions> {
           onTap: () => s.openSettings(5),
           onHint: _setHint,
         ),
+
+        // ── فاصل ──
+        //
+        // کیڼ خوا یې د **پروګرام** تڼۍ دي (سکن، تیم، په اړه)؛
+        // ښي خوا یې د **کار** تڼۍ (نوې پیښه). یو نری خط دواړه
+        // ډلې بېلوي، نو سترګه یې سمدلاسه پېژني.
+        Container(
+          width: 1,
+          height: 18,
+          margin: const EdgeInsets.symmetric(horizontal: 7),
+          color: cs.outlineVariant,
+        ),
+
+        _BarButton(
+          key: AppTitleBar.kNewEvent,
+          icon: Icons.add_rounded,
+          label: 'نوې پیښه',
+          accent: true,
+          onTap: () {
+            // **ولې د ناوبرۍ کیلي؟** دا بار د `Navigator` تر پورته
+            // دی، نو د خپل `context` له لارې `showDialog()` هیڅ
+            // Navigator نه مومي.
+            final ctx = ArchiveApp.navigatorKey.currentContext;
+            if (ctx != null) showNewEventDialog(ctx);
+          },
+          onHint: _setHint,
+        ),
         // د ماوس لاندې تڼۍ نوم — یو سپک، ځای‌نه‌نیوونکی لیبل.
         AnimatedSize(
           duration: AppTokens.fast,
@@ -322,6 +379,19 @@ class _ActionsState extends State<_Actions> {
   }
 }
 
+/// «۵ دقیقې مخکې» — یا تشه، که هیڅکله سکن شوی نه وي.
+String _since(DateTime? t) {
+  if (t == null) return '';
+  final d = DateTime.now().difference(t);
+  final label = switch (d) {
+    _ when d.inMinutes < 1 => 'همدا اوس',
+    _ when d.inMinutes < 60 => '${PashtoDigits.to(d.inMinutes)} دقیقې مخکې',
+    _ when d.inHours < 24 => '${PashtoDigits.to(d.inHours)} ساعته مخکې',
+    _ => '${PashtoDigits.to(d.inDays)} ورځې مخکې',
+  };
+  return '  ·  وروستی سکن: $label';
+}
+
 class _BarButton extends StatefulWidget {
   const _BarButton({
     super.key,
@@ -330,6 +400,7 @@ class _BarButton extends StatefulWidget {
     required this.onTap,
     required this.onHint,
     this.busy = false,
+    this.accent = false,
   });
 
   final IconData icon;
@@ -337,6 +408,10 @@ class _BarButton extends StatefulWidget {
   final VoidCallback? onTap;
   final ValueChanged<String?> onHint;
   final bool busy;
+
+  /// د اصلي عمل تڼۍ (نوې پیښه) — د پروګرام په رنګ، نو سترګه یې
+  /// له نورو ایکنونو بېله کړي.
+  final bool accent;
 
   @override
   State<_BarButton> createState() => _BarButtonState();
@@ -402,19 +477,23 @@ class _BarButtonState extends State<_BarButton>
             height: 26,
             margin: const EdgeInsets.symmetric(horizontal: 1),
             decoration: BoxDecoration(
-              color: _over
-                  ? cs.onSurface.withValues(alpha: 0.09)
-                  : Colors.transparent,
+              color: widget.accent
+                  ? cs.primary.withValues(alpha: _over ? 0.22 : 0.13)
+                  : _over
+                      ? cs.onSurface.withValues(alpha: 0.09)
+                      : Colors.transparent,
               borderRadius: BorderRadius.circular(7),
             ),
             child: RotationTransition(
               turns: _spin,
               child: Icon(
                 widget.icon,
-                size: 16,
+                size: widget.accent ? 18 : 16,
                 color: widget.onTap == null
                     ? cs.onSurfaceVariant.withValues(alpha: 0.55)
-                    : cs.onSurfaceVariant,
+                    : widget.accent
+                        ? cs.primary
+                        : cs.onSurfaceVariant,
               ),
             ),
           ),
@@ -430,22 +509,41 @@ class _BarButtonState extends State<_BarButton>
 
 enum _Glyph { minimize, maximize, close }
 
-/// یوه ګرده تڼۍ — د macOS د ترافیک څراغ په څېر، خو د وینډوز په
-/// ترتیب او **تل ښکاره** ایکن سره.
+/// یوه ګرده تڼۍ — د macOS د ترافیک څراغ په څېر، په وینډوز ترتیب.
+///
+/// **د ایکن ښکاره کېدل.** کاروونکي وویل: «د دې بټنو مخکې ډیر
+/// خوندور افکټ درلود، دقیقاً لکه د حقیقي mac — کله به چې موس د
+/// بټنو سره ټچ شو نو د بټنو دننه ایکن به په ښکلي ډول وښودل شو».
+/// نو ایکن اوس بیا هم د ماوس په راتګ سره راځي: نه یوازې شفافیت،
+/// بلکې یو کوچنی **پړسوب** (۰٫۶ → ۱) هم لري، نو داسې ښکاري چې
+/// له کړۍ دننه راوځي.
+///
+/// **د ایکن رنګ.** کاروونکي وغوښتل چې «د بک ګراند رنګ طابع کړي —
+/// سپین حالت کې سپین او تور کې تور». نو ایکن د **بار د شالید**
+/// په رنګ رسمیږي: داسې بریښي لکه څراغ چې سوری شوی وي او شالید
+/// ترې ښکاري.
 class _Light extends StatefulWidget {
   const _Light({
     super.key,
     required this.color,
     required this.hoverColor,
     required this.glyph,
+    required this.glyphColor,
     required this.tooltip,
+    required this.show,
     required this.onTap,
   });
 
   final Color color;
   final Color hoverColor;
   final _Glyph glyph;
+
+  /// د ایکن رنګ — د ټایټل بار د شالید هومره.
+  final Color glyphColor;
   final String tooltip;
+
+  /// آیا ماوس د بار پر سر دی؟
+  final bool show;
   final VoidCallback onTap;
 
   @override
@@ -481,8 +579,17 @@ class _LightState extends State<_Light> {
                 width: 0.5,
               ),
             ),
-            child: CustomPaint(
-              painter: _GlyphPainter(widget.glyph),
+            child: AnimatedScale(
+              duration: AppTokens.base,
+              curve: AppTokens.spring,
+              scale: widget.show ? 1 : 0.6,
+              child: AnimatedOpacity(
+                duration: AppTokens.fast,
+                opacity: widget.show ? 1 : 0,
+                child: CustomPaint(
+                  painter: _GlyphPainter(widget.glyph, widget.glyphColor),
+                ),
+              ),
             ),
           ),
         ),
@@ -497,14 +604,15 @@ class _LightState extends State<_Light> {
 /// د دومره کوچني کچ لپاره نه دی. دلته درې ساده شکلونه په خپله
 /// کرښه رسمیږي — همغه پنډوالی، همغه اندازه، هره کچه کې روښانه.
 class _GlyphPainter extends CustomPainter {
-  const _GlyphPainter(this.glyph);
+  const _GlyphPainter(this.glyph, this.color);
   final _Glyph glyph;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final p = Paint()
-      ..color = const Color(0xFF14181F).withValues(alpha: 0.78)
-      ..strokeWidth = 1.35
+      ..color = color
+      ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke
       ..isAntiAlias = true;
@@ -532,5 +640,6 @@ class _GlyphPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_GlyphPainter old) => old.glyph != glyph;
+  bool shouldRepaint(_GlyphPainter old) =>
+      old.glyph != glyph || old.color != color;
 }

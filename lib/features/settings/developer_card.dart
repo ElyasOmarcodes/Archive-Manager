@@ -9,7 +9,7 @@ import '../../widgets/common.dart';
 /// **د جوړونکي پاڼه** — «زمونږ په اړه».
 ///
 /// کاروونکي د موبایل یو سکرین‌شاټ راولېږه او وویل: «زیات وضاحت مه
-/// پکې کوه، فقط همداسې ښکلی UI د وینډوز سکرین سره مناسب طراحي
+/// پکې کوه، فقط همداسې ښکلی UI د وينډوز سکرین سره مناسب طراحي
 /// کړه». نو دلته:
 ///
 /// * د موبایل **اوږد عمودي** جوړښت پر پراخه کړکۍ **څنګ‌په‌څنګ** شو —
@@ -20,37 +20,43 @@ import '../../widgets/common.dart';
 class DeveloperCard extends StatelessWidget {
   const DeveloperCard({super.key});
 
+  /// **یوازې د ازموینې لپاره.** د انځور کړۍ تل څرخي — یعنې پرده
+  /// هیڅکله «آرامه» نه کیږي، او `pumpAndSettle()` به تل ودریږي.
+  /// دا بېرغ یې بندوي.
+  @visibleForTesting
+  static bool animate = true;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
       final wide = c.maxWidth >= 720;
-      final hero = const _Hero();
-      final rest = Column(
+      const hero = _Hero();
+      const rest = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          _Label('جوړوي یې لپاره'),
+        children: [
+          _Label('جوړوي یې لپاره', Icons.devices_rounded),
           SizedBox(height: AppTokens.s12),
           _Platforms(),
           SizedBox(height: AppTokens.s24),
-          _Label('اړیکه'),
+          _Label('اړیکه', Icons.connect_without_contact_rounded),
           SizedBox(height: AppTokens.s12),
           _Contacts(),
         ],
       );
 
       if (!wide) {
-        return Column(
+        return const Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [hero, const SizedBox(height: AppTokens.s24), rest],
+          children: [hero, SizedBox(height: AppTokens.s24), rest],
         );
       }
 
-      return Row(
+      return const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 300, child: hero),
-          const SizedBox(width: AppTokens.s24),
+          SizedBox(width: 320, child: hero),
+          SizedBox(width: AppTokens.s24),
           Expanded(child: rest),
         ],
       );
@@ -67,8 +73,8 @@ class _Hero extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.s20, vertical: AppTokens.s24),
+      padding: const EdgeInsets.fromLTRB(
+          AppTokens.s20, AppTokens.s24, AppTokens.s20, AppTokens.s20),
       decoration: BoxDecoration(
         borderRadius: AppTokens.brLg,
         border: Border.all(color: cs.outlineVariant),
@@ -76,24 +82,34 @@ class _Hero extends StatelessWidget {
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
           colors: [
-            Color.alphaBlend(AppTokens.brand.withValues(alpha: 0.07), cs.surface),
-            Color.alphaBlend(AppTokens.rose.withValues(alpha: 0.05), cs.surface),
+            Color.alphaBlend(AppTokens.brand.withValues(alpha: 0.08), cs.surface),
+            Color.alphaBlend(AppTokens.rose.withValues(alpha: 0.06), cs.surface),
           ],
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTokens.brand.withValues(alpha: 0.07),
+            blurRadius: 26,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const _Avatar(size: 116),
+          const _Avatar(size: 132),
           const SizedBox(height: AppTokens.s16),
           Text(kDevNamePs,
               style: const TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.w800, height: 1.4)),
+                  fontSize: 21, fontWeight: FontWeight.w800, height: 1.4)),
           Text(kDevNameEn,
-              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+              style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 0.3,
+                  color: cs.onSurfaceVariant)),
           const SizedBox(height: AppTokens.s12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: cs.surface,
               borderRadius: BorderRadius.circular(AppTokens.rPill),
@@ -102,7 +118,28 @@ class _Hero extends StatelessWidget {
             child: Text(kDevRole,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 11.5, height: 1.6, color: cs.onSurfaceVariant)),
+                    fontSize: 11.5, height: 1.7, color: cs.onSurfaceVariant)),
+          ),
+          const SizedBox(height: AppTokens.s16),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.7)),
+          const SizedBox(height: AppTokens.s12),
+          // د پروګرام خپله پېژندنه — نو پاڼه یوازې د یوه کس نه،
+          // بلکې د دې پروګرام د جوړونکي ده.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const AppLogo(size: 22, shadow: false),
+              const SizedBox(width: AppTokens.s8),
+              // نوم اوږد دی او کارت نری — نو دې کرښې ته د تنګېدو
+              // اجازه ورکوو، پرځای د دې چې بهر ولویږي.
+              Flexible(
+                child: Text('$kAppName · v$kAppVersion',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+              ),
+            ],
           ),
         ],
       ),
@@ -110,68 +147,131 @@ class _Hero extends StatelessWidget {
   }
 }
 
-/// د جوړونکي انځور، په یوه رنګینه کړۍ کې — لکه د موبایل پاڼه.
-class _Avatar extends StatelessWidget {
+/// د جوړونکي انځور، په یوه **څرخېدونکې** رنګینه کړۍ کې.
+///
+/// کاروونکي وغوښتل چې کړۍ متحرکه شي — نو ګرادیانت په ~۸ ثانیو کې
+/// یو ځل ګرځي. دا نرم دی، نه ځلېدونکی: سترګه یې ویني، خو کار نه
+/// ورانوي. `RepaintBoundary` یې ساتي چې یوازې همدا کړۍ بیا رسمیږي،
+/// نه ټوله پاڼه.
+class _Avatar extends StatefulWidget {
   const _Avatar({required this.size});
   final double size;
 
   @override
+  State<_Avatar> createState() => _AvatarState();
+}
+
+class _AvatarState extends State<_Avatar> with SingleTickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 8),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    // په ازموینو کې تلپاتې انیمیشن `pumpAndSettle()` بندوي.
+    final inTest = WidgetsBinding.instance.runtimeType
+        .toString()
+        .contains('AutomatedTest');
+    if (DeveloperCard.animate && !inTest) _spin.repeat();
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // انځور ۳۲۰×۳۲۰ دی؛ دلته یې په خپله وروستۍ اندازه ډيکوډ کوو،
+    // انځور ۴۰۰×۴۰۰ دی؛ دلته یې په خپله وروستۍ اندازه ډيکوډ کوو،
     // نو څنډې نرمې راځي (لکه د پروګرام نښه).
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
-    final px = ((size - 8) * dpr).round().clamp(32, 320);
+    final px = ((widget.size - 9) * dpr).round().clamp(32, 400);
 
-    return Container(
-      width: size,
-      height: size,
-      padding: const EdgeInsets.all(4),
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: SweepGradient(
-          colors: [
-            AppTokens.brand,
-            AppTokens.teal,
-            AppTokens.green,
-            AppTokens.amber,
-            AppTokens.rose,
-            AppTokens.violet,
-            AppTokens.brand,
-          ],
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(shape: BoxShape.circle, color: cs.surface),
-        padding: const EdgeInsets.all(2.5),
-        child: ClipOval(
-          child: Image.asset(
-            'assets/dev/elyas-omar.jpg',
-            fit: BoxFit.cover,
-            cacheWidth: px,
-            cacheHeight: px,
-            isAntiAlias: true,
-            filterQuality: FilterQuality.high,
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // ── ۱ · څرخېدونکې کړۍ ──
+          RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _spin,
+              builder: (_, _) => Transform.rotate(
+                angle: _spin.value * 6.283185307179586,
+                child: Container(
+                  width: widget.size,
+                  height: widget.size,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: SweepGradient(
+                      colors: [
+                        AppTokens.brand,
+                        AppTokens.teal,
+                        AppTokens.green,
+                        AppTokens.amber,
+                        AppTokens.rose,
+                        AppTokens.violet,
+                        AppTokens.brand,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
+          // ── ۲ · سپینه ککرۍ (چې کړۍ نرۍ ښکاره شي) ──
+          Container(
+            width: widget.size - 9,
+            height: widget.size - 9,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: cs.surface),
+            padding: const EdgeInsets.all(3),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/dev/elyas-omar.jpg',
+                fit: BoxFit.cover,
+                cacheWidth: px,
+                cacheHeight: px,
+                isAntiAlias: true,
+                filterQuality: FilterQuality.high,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _Label extends StatelessWidget {
-  const _Label(this.text);
+  const _Label(this.text, this.icon);
   final String text;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Text(text,
-        style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
-            color: cs.onSurfaceVariant));
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: cs.onSurfaceVariant),
+        const SizedBox(width: AppTokens.s8),
+        Text(text,
+            style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+                color: cs.onSurfaceVariant)),
+        const SizedBox(width: AppTokens.s12),
+        Expanded(
+          child: Divider(
+              height: 1, color: cs.outlineVariant.withValues(alpha: 0.8)),
+        ),
+      ],
+    );
   }
 }
 
@@ -197,7 +297,7 @@ class _Platforms extends StatelessWidget {
   }
 }
 
-class _PlatformTile extends StatelessWidget {
+class _PlatformTile extends StatefulWidget {
   const _PlatformTile(
       {required this.icon, required this.label, required this.color});
   final IconData icon;
@@ -205,26 +305,57 @@ class _PlatformTile extends StatelessWidget {
   final Color color;
 
   @override
+  State<_PlatformTile> createState() => _PlatformTileState();
+}
+
+class _PlatformTileState extends State<_PlatformTile> {
+  bool _over = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: 92,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: AppTokens.brMd,
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 26, color: color),
-          const SizedBox(height: AppTokens.s8),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurface)),
-        ],
+    return MouseRegion(
+      onEnter: (_) => setState(() => _over = true),
+      onExit: (_) => setState(() => _over = false),
+      child: AnimatedContainer(
+        duration: AppTokens.base,
+        curve: AppTokens.ease,
+        height: 96,
+        transform: Matrix4.translationValues(0, _over ? -3 : 0, 0),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              widget.color.withValues(alpha: _over ? 0.18 : 0.10),
+              widget.color.withValues(alpha: 0.04),
+            ],
+          ),
+          borderRadius: AppTokens.brMd,
+          border: Border.all(
+              color: widget.color.withValues(alpha: _over ? 0.55 : 0.28)),
+          boxShadow: _over
+              ? [
+                  BoxShadow(
+                    color: widget.color.withValues(alpha: 0.22),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(widget.icon, size: 27, color: widget.color),
+            const SizedBox(height: AppTokens.s8),
+            Text(widget.label,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface)),
+          ],
+        ),
       ),
     );
   }
@@ -236,8 +367,8 @@ class _Contacts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: const [
+    return const Column(
+      children: [
         _ContactRow(
           icon: Icons.chat_rounded,
           color: AppTokens.green,
@@ -266,7 +397,7 @@ class _Contacts extends StatelessWidget {
   }
 }
 
-class _ContactRow extends StatelessWidget {
+class _ContactRow extends StatefulWidget {
   const _ContactRow({
     required this.icon,
     required this.color,
@@ -282,66 +413,102 @@ class _ContactRow extends StatelessWidget {
   final String url;
 
   @override
+  State<_ContactRow> createState() => _ContactRowState();
+}
+
+class _ContactRowState extends State<_ContactRow> {
+  bool _over = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final s = context.read<AppState>();
+    final c = widget.color;
 
-    return Material(
-      color: color.withValues(alpha: 0.06),
-      borderRadius: AppTokens.brMd,
-      child: InkWell(
+    return MouseRegion(
+      onEnter: (_) => setState(() => _over = true),
+      onExit: (_) => setState(() => _over = false),
+      child: Material(
+        color: c.withValues(alpha: _over ? 0.11 : 0.06),
         borderRadius: AppTokens.brMd,
-        onTap: () => s.backend.openExternally(url),
-        child: Container(
-          height: 62,
-          padding: const EdgeInsets.symmetric(horizontal: AppTokens.s12),
-          decoration: BoxDecoration(
-            borderRadius: AppTokens.brMd,
-            border: Border.all(color: color.withValues(alpha: 0.26)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: AppTokens.brSm,
-                ),
-                child: Icon(icon, size: 19, color: Colors.white),
-              ),
-              const SizedBox(width: AppTokens.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 12.5, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    // پته تل له کیڼه ښي (LTR) لوستل کیږي — نو د
-                    // `+937…` علامه یې پای ته ونه لویږي.
-                    Directionality(
-                      textDirection: TextDirection.ltr,
-                      child: Text(value,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: color)),
+        child: InkWell(
+          borderRadius: AppTokens.brMd,
+          onTap: () => s.backend.openExternally(widget.url),
+          child: AnimatedContainer(
+            duration: AppTokens.fast,
+            height: 64,
+            padding: const EdgeInsets.symmetric(horizontal: AppTokens.s12),
+            decoration: BoxDecoration(
+              borderRadius: AppTokens.brMd,
+              border: Border.all(
+                  color: c.withValues(alpha: _over ? 0.5 : 0.26)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: [c, Color.alphaBlend(
+                          Colors.black.withValues(alpha: 0.18), c)],
                     ),
-                  ],
+                    borderRadius: AppTokens.brSm,
+                    boxShadow: [
+                      BoxShadow(
+                        color: c.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(widget.icon, size: 19, color: Colors.white),
                 ),
-              ),
-              IconButton(
-                tooltip: 'کاپي',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => copyText(context, value, label: title),
-                icon: Icon(Icons.copy_rounded, size: 17, color: cs.onSurfaceVariant),
-              ),
-            ],
+                const SizedBox(width: AppTokens.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(widget.title,
+                          style: const TextStyle(
+                              fontSize: 12.5, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      // پته تل له کیڼه ښي (LTR) لوستل کیږي — نو د
+                      // `+937…` علامه یې پای ته ونه لویږي.
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text(widget.value,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: c)),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'کاپي',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () =>
+                      copyText(context, widget.value, label: widget.title),
+                  icon: Icon(Icons.copy_rounded,
+                      size: 17, color: cs.onSurfaceVariant),
+                ),
+                // د موبایل پاڼې په څېر یوه وړه نښه — «دا کرښه
+                // پرانیستل کیږي».
+                AnimatedOpacity(
+                  duration: AppTokens.fast,
+                  opacity: _over ? 1 : 0.35,
+                  child: Icon(Icons.chevron_left_rounded,
+                      size: 20, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
           ),
         ),
       ),

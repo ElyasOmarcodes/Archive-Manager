@@ -23,6 +23,10 @@ class _FakeDesktop extends DemoBackend {
   bool get isReal => true;
 
   @override
+  Future<String?> defaultExportDir() async =>
+      '/home/elyas/Documents/د آرشیف نهایي فایلونه';
+
+  @override
   Future<String?> saveFileAs({
     required String fileName,
     required List<int> bytes,
@@ -32,7 +36,9 @@ class _FakeDesktop extends DemoBackend {
     calls++;
     askedName = fileName;
     askedDir = initialDirectory;
-    return cancel ? null : r'C:\Users\Elyas\Desktop\' + fileName;
+    // پر ازموینې چلونکي ماشین (لینکس) کې د POSIX مسیر کاروو — نو
+    // `p.dirname` هماغه کار وکړي چې پر وینډوز یې کوي.
+    return cancel ? null : '/home/elyas/Desktop/$fileName';
   }
 
   @override
@@ -101,5 +107,39 @@ void main() {
     await t.pumpAndSettle();
     expect(find.byType(SnackBar), findsNothing,
         reason: 'ټوسټ باید پخپله ولاړ شي');
+  });
+
+  testWidgets('لومړی ځل د ډاکمنټ پوښۍ، بیا وروستی کارول شوی مسیر',
+      (t) async {
+    // کاروونکي وویل: «اوسنی ډیفالټ مسیر باید د ډاکمنټ فولډر دننه
+    // «د آرشیف نهایي فایلونه» وي، مګر … کارونکی چې یو مسیر انتخاب
+    // کړي، راتلونکی کې باید هماغه مسیر په ډیفالټ بڼه وي».
+    final b = _FakeDesktop();
+    final s = await open(t, b);
+    await exportPdf(t);
+
+    expect(b.askedDir, contains('نهایي فایلونه'),
+        reason: 'لومړی ځل: د ډاکمنټ پوښۍ');
+    expect(s.settings.exportDir, '/home/elyas/Desktop',
+        reason: 'ټاکل شوی مسیر باید یاد شي');
+
+    await exportPdf(t);
+    expect(b.askedDir, '/home/elyas/Desktop',
+        reason: 'دویم ځل: هماغه وروستی مسیر');
+  });
+
+  testWidgets('د لغوه کولو روسته تڼۍ بیا د کلیک وړ ده', (t) async {
+    // کاروونکي وویل: «که د وينډوز اکسپلورر بیرته کنسل کړو نو
+    // اکسپورټ بټن باندې دوام لرونکی پروګرس راځي چې بیا د کلیک وړ
+    // نه وي».
+    final b = _FakeDesktop(cancel: true);
+    await open(t, b);
+    await exportPdf(t);
+    expect(b.calls, 1);
+
+    // دویمه هڅه — که بېرغ بند پاتې وای، دا به هیڅ نه کوله.
+    await exportPdf(t);
+    expect(b.calls, 2, reason: 'تڼۍ باید بیا کار وکړي');
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 }

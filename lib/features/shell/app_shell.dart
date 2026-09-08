@@ -138,7 +138,7 @@ class _TopBarState extends State<_TopBar> {
         // عرض کوچنی کېده او د سکن اندیکېټر یې د `Spacer` ځای نیوه —
         // نو د بیا‌سکن او تیم ایکنونه له خپل ځایه ښوېدل. اوس د
         // ټولبار جوړښت د سکن له حالت څخه بشپړ خپلواک دی.
-        final reserved = 150 + (s.isDemo ? 120 : 0);
+        final reserved = 150.0;
         final searchW = (c.maxWidth - reserved).clamp(160.0, 380.0);
         return Row(
         children: [
@@ -173,7 +173,10 @@ class _TopBarState extends State<_TopBar> {
           // کاروونکي وویل: «د سکن او تیم افشن ټایټل بار ته راوړه
           // ترڅو تل لاسرسي وړ وي». نو هغه اوس د پروګرام پر سر،
           // په هره پاڼه کې دي — او دلته یې تکرار نه کوو.
-          if (s.isDemo && c.maxWidth > 720) const _DemoBadge(),
+          //
+          // **د «نندارې نسخه» نښه هم لرې شوه.** کاروونکي وویل:
+          // «د archive sample کلمه نور د پروګرام څخه ورکه کړه،
+          // ځکه غواړو پروګرام د عمل میدان ته راوباسو».
         ],
         );
       }),
@@ -218,31 +221,3 @@ class _ScanIndicator extends StatelessWidget {
   }
 }
 
-class _DemoBadge extends StatelessWidget {
-  const _DemoBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppTokens.amber.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTokens.amber.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.science_rounded, size: 13, color: AppTokens.amber),
-          const SizedBox(width: 5),
-          Text('د نندارې نسخه',
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: cs.onSurface)),
-        ],
-      ),
-    );
-  }
-}

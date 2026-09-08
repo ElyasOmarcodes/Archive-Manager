@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/date/pashto_calendar.dart';
+import '../../core/license/license_gate.dart';
 import '../../core/theme/tokens.dart';
 import '../models/models.dart';
 import '../models/query.dart';
@@ -49,6 +50,26 @@ class AppState extends ChangeNotifier {
   CalendarKind get calendar => CalendarKind.values.firstWhere(
       (c) => c.name == settings.calendar,
       orElse: () => CalendarKind.shamsi);
+
+  // ── د فعالېدو دروازه ────────────────────────────────────
+  //
+  // پروګرام په پس‌منظر کې د کنټرول فایل څاري. که هلته `false`
+  // ولیکل شي، سمدلاسه د اکسپایر پاڼې ته ځي — او تړلی پاتې کیږي تر
+  // څو چې بیا اجازه ورنکړل شي.
+  late final LicenseGate license = LicenseGate(onChanged: _saveLock)
+    ..addListener(notifyListeners);
+
+  /// د سکرین‌شاټ/ډیزاین لپاره:
+  /// `flutter build web --dart-define=FORCE_LOCKED=true`
+  static const bool _forceLocked = bool.fromEnvironment('FORCE_LOCKED');
+
+  bool get locked => license.locked || _forceLocked;
+
+  Future<void> _saveLock(bool locked, DateTime? at) async {
+    settings.licenseLocked = locked;
+    settings.licenseLockedAt = at?.toIso8601String();
+    await backend.saveSettings(settings);
+  }
 
   // ── د پیل حالت ──────────────────────────────────────────
   bool booting = true;
@@ -118,6 +139,13 @@ class AppState extends ChangeNotifier {
     try {
       _step('تنظیمات لوستل کیږي…');
       settings = await backend.loadSettings();
+
+      // ساتل شوی لاک — که تړل شوی و، سمدلاسه تړلی پیلیږي.
+      license.restore(
+        locked: settings.licenseLocked,
+        at: DateTime.tryParse(settings.licenseLockedAt ?? ''),
+      );
+
       final root = settings.archiveRoot;
 
       if (settings.onboarded && root != null) {
@@ -139,15 +167,35 @@ class AppState extends ChangeNotifier {
     booting = false;
     notifyListeners();
 
-    // ── سکن، وروسته له پرانیستلو ──
+    // د کنټرول فایل څارنه — چوپه، په پس‌منظر کې.
+    if (!LicenseGate.isTestEnvironment) license.start();
+
+    // ── سکن — یوازې که اړتیا وي ──
     //
-    // دلته `await` نه کوو: کاروونکی لا دمخه پروګرام کاروي، او
-    // پرمختګ یې په سایډبار کې ویني.
+    // کاروونکي وویل: «ولې هر ځل چې پروګرام خلاصوو ټول ډیټابیس
+    // اسکن کیږي؟ … یو ځل چې لومړي کې اسکن شي، بیا اسکن باید
+    // ضرورت نه وي، ترڅو چټک وي».
+    //
+    // سمه خبره ده. ایندکس **پر ډیسک** پاتې کیږي، نو دویم ځل یې
+    // پرانیستل بس دي. نو:
+    //
+    // * **لومړی ځل** (یا نوی مسیر) → بشپړ سکن، په پس‌منظر کې
+    // * **وروسته** → هیڅ سکن نه؛ پروګرام سمدلاسه چمتو دی
+    // * کاروونکی هر وخت د ټایټل بار له تڼۍ سکن کولی شي — او
+    //   هغه سکن هم پرګمنټ دی (یوازې بدل شوي فولډرونه لولي)
     final root = settings.archiveRoot;
     if (backend.isReal && !rootMissing && root != null) {
-      unawaited(rescanArchive());
+      lastScan = await backend.lastScanAt(root);
+      if (lastScan == null) {
+        unawaited(rescanArchive());
+      } else {
+        notifyListeners();
+      }
     }
   }
+
+  /// دا آرشیف وروستی ځل کله سکن شو؟ (د ټایټل بار د تڼۍ لپاره)
+  DateTime? lastScan;
 
   Future<void> _openRoot(String root, {bool rescan = true}) async {
     await backend.openIndex(root);
@@ -186,12 +234,13 @@ class AppState extends ChangeNotifier {
 
   Future<void> rescanArchive() async {
     final root = settings.archiveRoot;
-    if (root == null) return;
+    if (root == null || scan != null) return;
     await for (final p in backend.rescan(root)) {
       scan = p;
       notifyListeners();
     }
     scan = null;
+    lastScan = await backend.lastScanAt(root);
     await refresh();
   }
 
@@ -295,6 +344,20 @@ class AppState extends ChangeNotifier {
     if (settingsSection == i) return;
     settingsSection = i;
     notifyListeners();
+  }
+
+  /// د اکسپلورر «پټ فایلونه وښایه» افشن.
+  Future<void> toggleHiddenFiles() async {
+    settings.showHiddenFiles = !settings.showHiddenFiles;
+    notifyListeners();
+    await backend.saveSettings(settings);
+  }
+
+  /// د اکسپورټ وروستی مسیر ساتي — نو راتلونکی ځل هماغه پرانیستل شي.
+  Future<void> rememberExportDir(String dir) async {
+    if (settings.exportDir == dir) return;
+    settings.exportDir = dir;
+    await backend.saveSettings(settings);
   }
 
   void toggleSidebar() {

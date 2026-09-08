@@ -134,9 +134,17 @@ class _ExplorerPageState extends State<ExplorerPage> {
 
   List<FsEntry> get _visible {
     final q = _searchCtl.text.trim().toLowerCase();
+
+    // **پټ فایلونه.** د پروګرام خپل ثبت فایلونه (`metadata.json`،
+    // `content.json`) او هر څه چې وینډوز یې پټ ګڼي — یوازې هغه
+    // وخت ښکاري چې کاروونکی یې د ټولبار له تڼۍ وغواړي.
+    final showHidden = context.read<AppState>().settings.showHiddenFiles;
+    final base =
+        showHidden ? _entries : _entries.where((e) => !e.isHidden).toList();
+
     var list = q.isEmpty
-        ? [..._entries]
-        : _entries.where((e) => e.name.toLowerCase().contains(q)).toList();
+        ? [...base]
+        : base.where((e) => e.name.toLowerCase().contains(q)).toList();
 
     list.sort((a, b) {
       if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
@@ -577,6 +585,19 @@ class _ExplorerPageState extends State<ExplorerPage> {
           _tool(context, Icons.account_tree_rounded, 'د فولډرونو ونه',
               () => setState(() => _showTree = !_showTree),
               active: _showTree),
+
+          // **پټ فایلونه.** د پروګرام خپل ثبت فایلونه پټ دي (نو
+          // محیط صفا وي)، خو څوک چې یې لیدل غواړي، همدلته یې
+          // راښکاره کولی شي.
+          _tool(
+            context,
+            context.watch<AppState>().settings.showHiddenFiles
+                ? Icons.visibility_rounded
+                : Icons.visibility_off_rounded,
+            'پټ فایلونه وښایه',
+            () => context.read<AppState>().toggleHiddenFiles(),
+            active: context.watch<AppState>().settings.showHiddenFiles,
+          ),
         ],
       ),
     );

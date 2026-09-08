@@ -53,13 +53,14 @@ class IndexDb implements EventIndex {
 
   /// د سکیما نسخه — که بدله شي، ایندکس پخپله بیا جوړیږي
   /// (ډیټا نه ورکیږي، ځکه حقیقت د `metadata.json` فایلونه دي).
-  static const int schemaVersion = 3;
+  static const int schemaVersion = 4;
 
   static void _migrate(Database db) {
     final v = db.select('PRAGMA user_version').first.values.first as int;
     if (v != 0 && v != schemaVersion) {
       for (final t in ['events_fts', 'events', 'event_keywords',
-                       'event_persons', 'event_media', 'vocab']) {
+                       'event_persons', 'event_media', 'vocab',
+                       'folder_stamp', 'index_meta']) {
         db.execute('DROP TABLE IF EXISTS $t');
       }
     }
@@ -119,6 +120,27 @@ class IndexDb implements EventIndex {
         color_tag TEXT NOT NULL DEFAULT 'none',
         note      TEXT NOT NULL DEFAULT '',
         PRIMARY KEY (kind, name)
+      ) WITHOUT ROWID''');
+
+    // ── د پرګمنټ سکن حافظه ──
+    //
+    // کاروونکي وویل: «ولې هر ځل چې پروګرام خلاصوو ټول ډیټابیس
+    // اسکن کیږي؟ یو ځل چې لومړي کې اسکن شي، بیا باید ضرورت نه
+    // وي». نو دلته د **هر پیښې فولډر** د `metadata.json` د
+    // بدلون وخت ساتو. راتلونکی سکن یوازې هغه فولډرونه لولي چې
+    // وخت یې بدل شوی وي — نور یې پرېږدي.
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS folder_stamp (
+        folder TEXT PRIMARY KEY,
+        mtime  INTEGER NOT NULL,
+        id     TEXT NOT NULL DEFAULT ''
+      ) WITHOUT ROWID''');
+
+    // ساده کیلي/ارزښت — لکه `last_scan_at` او `scanned_root`.
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS index_meta (
+        k TEXT PRIMARY KEY,
+        v TEXT NOT NULL
       ) WITHOUT ROWID''');
 
     // ── FTS5: د بشپړ متن معکوس ایندکس ──
@@ -210,14 +232,56 @@ class IndexDb implements EventIndex {
   void remove(String id) {
     _db.execute('BEGIN IMMEDIATE');
     try {
-      final r = _db.select('SELECT rowid FROM events WHERE id = ?', [id]);
-      if (r.isNotEmpty) {
-        _db.execute('DELETE FROM events_fts WHERE rowid = ?',
-            [r.first['rowid']]);
-      }
-      _db.execute('DELETE FROM events WHERE id = ?', [id]);
-      for (final t in ['keywords', 'persons', 'media']) {
-        _db.execute('DELETE FROM event_$t WHERE event_id = ?', [id]);
+      _removeNoTx(id);
+      _db.execute('COMMIT');
+    } catch (_) {
+      _db.execute('ROLLBACK');
+      rethrow;
+    }
+  }
+
+  /// د یوې معاملې دننه — نو ډله‌ییز حذف یوه معامله وي.
+  void _removeNoTx(String id) {
+    final r = _db.select('SELECT rowid FROM events WHERE id = ?', [id]);
+    if (r.isNotEmpty) {
+      _db.execute('DELETE FROM events_fts WHERE rowid = ?',
+          [r.first['rowid']]);
+    }
+    _db.execute('DELETE FROM events WHERE id = ?', [id]);
+    for (final t in ['keywords', 'persons', 'media']) {
+      _db.execute('DELETE FROM event_$t WHERE event_id = ?', [id]);
+    }
+  }
+
+  /// **د پرګمنټ سکن اوزار.**
+  ///
+  /// د هر پیښې فولډر → د `metadata.json` وروستی بدلون (ms).
+  Map<String, int> folderStamps() {
+    final out = <String, int>{};
+    for (final r in _db.select('SELECT folder, mtime FROM folder_stamp')) {
+      out[r['folder'] as String] = r['mtime'] as int;
+    }
+    return out;
+  }
+
+  /// د یوه فولډر مهر ثبتوي (او کومې پیښې پورې چې اړه لري).
+  void setStamp(String folder, int mtime, String id) => _db.execute(
+      'INSERT INTO folder_stamp(folder, mtime, id) VALUES (?, ?, ?) '
+      'ON CONFLICT(folder) DO UPDATE SET mtime = excluded.mtime, '
+      'id = excluded.id',
+      [folder, mtime, id]);
+
+  /// هغه فولډرونه چې نور نشته — پیښې یې هم له ایندکسه وځي.
+  void dropFolders(Iterable<String> folders) {
+    if (folders.isEmpty) return;
+    _db.execute('BEGIN IMMEDIATE');
+    try {
+      for (final f in folders) {
+        for (final r
+            in _db.select('SELECT id FROM events WHERE folder = ?', [f])) {
+          _removeNoTx(r['id'] as String);
+        }
+        _db.execute('DELETE FROM folder_stamp WHERE folder = ?', [f]);
       }
       _db.execute('COMMIT');
     } catch (_) {
@@ -226,8 +290,19 @@ class IndexDb implements EventIndex {
     }
   }
 
+  String? meta(String key) {
+    final r = _db.select('SELECT v FROM index_meta WHERE k = ?', [key]);
+    return r.isEmpty ? null : r.first['v'] as String;
+  }
+
+  void setMeta(String key, String value) => _db.execute(
+      'INSERT INTO index_meta(k, v) VALUES (?, ?) '
+      'ON CONFLICT(k) DO UPDATE SET v = excluded.v',
+      [key, value]);
+
   @override
   void clear() {
+    _db.execute('DELETE FROM folder_stamp');
     _db.execute('DELETE FROM events');
     _db.execute('DELETE FROM events_fts');
     for (final t in ['keywords', 'persons', 'media']) {

@@ -99,6 +99,15 @@ class _ErrorCard extends StatelessWidget {
 class ArchiveApp extends StatelessWidget {
   const ArchiveApp({super.key, this.homeOverride});
 
+  /// **د ټول پروګرام د ناوبرۍ کیلي.**
+  ///
+  /// ټایټل بار د `MaterialApp` د `builder` دننه دی — یعنې د
+  /// `Navigator` **تر پورته**. نو د هغه له `context` څخه
+  /// `showDialog()` هیڅ Navigator نه مومي. دا کیلي یې حل دی: هر
+  /// چا چې له بار څخه ډایلوګ پرانیزي، د دې له لارې یې کوي.
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   /// یوازې د ازموینو لپاره — نو ازموینې د ریښتیني MaterialApp له لارې
   /// چلیږي (ژبه، ډېلیګیټونه، تیم) نه د یوه جوړ شوي بدیل له لارې.
   final Widget? homeOverride;
@@ -114,6 +123,7 @@ class ArchiveApp extends StatelessWidget {
       // نو د موس په واسطه کش کول ناشوني وي. دلته یې هر ځای فعالوو،
       // او لمس/سټایلس/ټریک‌پیډ ته هم د کش کولو اجازه ورکوو.
       scrollBehavior: const _AppScrollBehavior(),
+      navigatorKey: navigatorKey,
       title: 'د آرشیف چټک مدیر',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
