@@ -1,7 +1,7 @@
 name: archive_manager
 description: "د آرشیف چټک مدیر — Archive Quick Manager"
 publish_to: 'none'
-version: 1.2.0+1
+version: 1.3.0+1
 
 environment:
   sdk: ^3.13.2
