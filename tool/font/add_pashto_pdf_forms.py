@@ -1,80 +1,95 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""د PDF لپاره فونټ ته د پښتو د پیشکش‌بڼو (presentation forms) ورزیاتول.
+"""د پښتو تورو تړل په PDF کې — د فونټ او جدول چمتو کول.
 
 ## ستونزه
 
-د `pdf` کتابتون خپل عربي شکل‌ورکوونکی لري: هره توری د خپل ځای له
-مخې (یوازې / پای / پیل / منځ) په یوه **Arabic Presentation Form**
-بدلوي — لکه ب → U+FE91. بیا هماغه کوډپوینټ په فونټ کې لټوي.
+د PDF کتابتون (او د هغه `bidi` کڅوړه) متن ته پخپله شکل ورکوي:
+هر توری د خپل ګاونډ له مخې خپلې تړلې بڼې ته اړوي. خو د هغې
+جدول **۷۸ عربي توري** پېژني — او د پښتو دا لس توري پکې نشته:
 
-عصري فونټونه (Vazirmatn هم) دا زړې بڼې نه ساتي — دوی OpenType
-(`init`/`medi`/`fina`) کاروي. نو کله چې کوډپوینټ ونه موندل شي،
-د فونټ لومړی ګلیف (`.notdef` یا یو بې‌ربطه توری) رسمیږي.
+    ټ  ځ  څ  ډ  ړ  ږ  ښ  ګ  ڼ  ۍ
 
-**پایله:** په PDF کې «کې» → «کA»، «ضمیمې» → «ضمیمA»، «یې» → «یA».
-د پښتو تر ټولو عامه توری **ې (U+06D0)** بیخي ماته وه.
+نو دا توري (او د هغو ګاونډیان) بې‌تړلې پاتې کیږي:
 
-## حل
+    چټک  →  چ ټ ک        پښتو  →  پ ښ تو        کټګوري  →  ک ټ ګوري
 
-فونټ ته یوازې د **cmap** نوې کرښې ورزیاتوو: FBE4…FBE7 → هماغه
-ګلیفونه چې OpenType یې د `init`/`medi`/`fina` لپاره کاروي. ګلیفونه
-لا دمخه په فونټ کې شته — یوازې نوم یې نه و ورکړل شوی.
+## حل — «د پور توری»
 
-نو:
-  * د فونټ حجم عملاً نه بدلیږي (یوازې څو کرښې cmap)،
-  * د فلټر رسمول هیڅ نه بدلیږي (هغه دا کوډپوینټونه نه کاروي)،
-  * او PDF سم پښتو رسموي.
+د هرې پښتو توري لپاره یو **پوروړی** عربي توری ټاکو چې:
+
+  * د کتابتون جدول یې **پېژني**، او
+  * د تړلو ډول یې هماغه وي (دواړه خوا / یوازې ښي), او
+  * پښتو/دري یې **هیڅکله نه کاروي** (اردو یا سندي توري دي).
+
+بیا په فونټ کې د **پوروړي د تړلو بڼو** کوډپوینټونه د **پښتو**
+توري ګلیفونو ته ورګرځوو. نو:
+
+    ټ  →  ٺ  →  کتابتون یې سم تړي  →  فونټ یې د ټ په بڼه رسموي
+
+او د کاپي کولو لپاره؟ د PDF د `ToUnicode` جدول بېرته اصلي پښتو
+توري ته اړوو (وګورئ `pdf_export.dart`) — نو له PDF نه کاپي شوی
+متن ریښتینی پښتو وي، نه اردو.
 
 ## چلول
 
     python3 tool/font/add_pashto_pdf_forms.py
-
-پایله یې مستقیم پر `assets/fonts/*.ttf` لیکل کیږي. که فونټ نوی
-شي (اپډیټ)، دا سکریپټ بیا وچلوه.
 """
 
-import re
-import sys
+import unicodedata
 from pathlib import Path
 
 from fontTools.ttLib import TTFont
 
 ROOT = Path(__file__).resolve().parents[2]
 FONTS = sorted((ROOT / 'assets/fonts').glob('Vazirmatn-*.ttf'))
+OUT_DART = ROOT / 'lib/core/text/pashto_pdf_forms.g.dart'
 
-# د `pdf` کتابتون جدول: base -> [isolated, final, initial, medial]
-ARABIC_TABLE_DART = (
-    Path.home()
-    / '.pub-cache/hosted/pub.dev/pdf-3.13.0/lib/src/pdf/font/arabic.dart'
-)
-
-# که د کتابتون فایل ونه موندل شو، لږ تر لږه د پښتو اړینې توري.
-FALLBACK = {
-    0x06D0: [0xFBE4, 0xFBE5, 0xFBE6, 0xFBE7],  # ې
-    0x06C0: [0xFBA4, 0xFBA5],                  # ۀ
-    0x06C1: [0xFBA6, 0xFBA7, 0xFBA8, 0xFBA9],  # ہ
+# پښتو توری → پوروړی توری
+#
+# د تړلو ډول دواړو کې یو شان دی، ګنې کلمه بیا هم ماتیږي.
+DONORS = {
+    0x067C: (0x067A, 'ټ', 'ٺ'),   # دواړه خوا (ت کورنۍ)
+    0x0681: (0x0683, 'ځ', 'ڃ'),   # دواړه خوا (ح کورنۍ)
+    0x0685: (0x0684, 'څ', 'ڄ'),   # دواړه خوا (ح کورنۍ)
+    0x0689: (0x0688, 'ډ', 'ڈ'),   # یوازې ښي (د کورنۍ)
+    0x0693: (0x0691, 'ړ', 'ڑ'),   # یوازې ښي (ر کورنۍ)
+    0x0696: (0x068D, 'ږ', 'ڍ'),   # یوازې ښي (د کورنۍ)
+    0x069A: (0x06A6, 'ښ', 'ڦ'),   # دواړه خوا (ف کورنۍ)
+    0x06AB: (0x06AD, 'ګ', 'ڭ'),   # دواړه خوا (ک کورنۍ)
+    0x06BC: (0x06BB, 'ڼ', 'ڻ'),   # دواړه خوا (ن کورنۍ)
+    0x06CD: (0x06D2, 'ۍ', 'ے'),   # یوازې ښي (ی کورنۍ)
 }
 
-# د بڼو ترتیب د پورته جدول مطابق
-ORDER = ['isol', 'fina', 'init', 'medi']
+# هغه پښتو توري چې کتابتون یې **پېژني**، خو ډېر فونټونه یې زړې
+# بڼې نه لري. دلته یوازې د فونټ cmap ته کرښې ورزیاتوو.
+DIRECT = [0x06D0, 0x06C0]  # ې ، ۀ
+
+TAGS = [('isolated', None), ('final', 'fina'),
+        ('initial', 'init'), ('medial', 'medi')]
 
 
-def read_table():
-    if not ARABIC_TABLE_DART.exists():
-        return FALLBACK
-    src = ARABIC_TABLE_DART.read_text(encoding='utf-8')
+def unicode_forms():
+    """base → {tag: codepoint} (له یونیکوډ څخه)."""
     out = {}
-    for m in re.finditer(r'0x([0-9A-Fa-f]{4}):\s*<int>\[([^\]]*)\]', src, re.S):
-        base = int(m.group(1), 16)
-        forms = [int(x.strip(), 0) for x in m.group(2).split(',') if x.strip()]
-        if forms:
-            out[base] = forms
-    return out or FALLBACK
+    for cp in range(0xFB50, 0xFF00):
+        d = unicodedata.decomposition(chr(cp))
+        if not d.startswith('<'):
+            continue
+        tag, rest = d[1:].split('>', 1)
+        parts = rest.split()
+        if len(parts) == 1:
+            out.setdefault(int(parts[0], 16), {})[tag] = cp
+    return out
 
 
 def single_subs(font, tag):
-    """د یوه فیچر (init/medi/fina) ټول یو-په-یو بدلونونه."""
+    """د یوه فیچر ټول یو‑په‑یو بدلونونه.
+
+    **پام:** ډېر فونټونه دا بدلونونه په «extension» (ډول ۷) کې
+    تړي، نو بهرنی ډول ۷ وي او دننه یې ۱ — نو هر هغه فرعي جدول
+    اخلو چې `mapping` ولري.
+    """
     if 'GSUB' not in font:
         return {}
     gsub = font['GSUB'].table
@@ -84,66 +99,105 @@ def single_subs(font, tag):
             idx.extend(rec.Feature.LookupListIndex)
     subs = {}
     for i in idx:
-        lk = gsub.LookupList.Lookup[i]
-        for st in lk.SubTable:
-            if getattr(st, 'LookupType', lk.LookupType) == 1 or lk.LookupType == 1:
-                mapping = getattr(st, 'mapping', None)
-                if mapping:
-                    subs.update(mapping)
+        for st in gsub.LookupList.Lookup[i].SubTable:
+            mapping = getattr(st, 'mapping', None)
+            if mapping:
+                subs.update(mapping)
     return subs
 
 
-def patch(path: Path, table) -> int:
-    font = TTFont(str(path))
-    base_cmap = font.getBestCmap()
-    forms = {
-        'isol': {},
-        'fina': single_subs(font, 'fina'),
-        'init': single_subs(font, 'init'),
-        'medi': single_subs(font, 'medi'),
-    }
-    glyphs = set(font.getGlyphOrder())
+def plan(font):
+    """راګرځوي: (cmap کرښې چې ورزیاتیږي، د ToUnicode بېرته‑جدول)."""
+    cmap = font.getBestCmap()
+    uni = unicode_forms()
+    gs = {t: single_subs(font, t) for t in ('fina', 'init', 'medi')}
+    add, back = {}, {}
 
-    added = {}
-    for base, codes in table.items():
-        g0 = base_cmap.get(base)
-        if not g0:
-            continue
-        for pos, code in enumerate(codes):
-            if code in base_cmap or code == base:
-                continue  # لا دمخه شته
-            tag = ORDER[pos] if pos < len(ORDER) else 'isol'
-            # که د دې بڼې ځانګړی ګلیف نه وي، اصلي ګلیف بهتر دی
-            # تر یوه بې‌ربطه توري.
-            g = forms[tag].get(g0, g0)
-            if g in glyphs:
-                added[code] = g
+    def glyph(base, tag):
+        g0 = cmap.get(base)
+        if g0 is None:
+            return None
+        return g0 if tag is None else gs[tag].get(g0)
 
-    if not added:
-        return 0
+    # ۱) پوروړي: د هغوی د بڼو کوډپوینټونه → د پښتو ګلیفونه
+    for pashto, (donor, _, _) in DONORS.items():
+        # **د پوروړي خپل کوډپوینټ هم.** کله چې توری یوازې (بې
+        # ګاونډه) وي، کتابتون یې اصلي بڼه پرېږدي — نو فونټ باید
+        # هغه هم وپېژني، ګنې «Unable to find a font to draw» راځي.
+        g0 = glyph(pashto, None)
+        if g0 is not None:
+            add[donor] = g0
+            back[donor] = pashto
+        for utag, otag in TAGS:
+            cp = uni.get(donor, {}).get(utag)
+            if cp is None:
+                continue
+            g = glyph(pashto, otag)
+            if g is None:
+                continue
+            add[cp] = g
+            back[cp] = pashto
 
-    for t in font['cmap'].tables:
-        # یوازې هغه جدولونه چې ټول یونیکوډ نیسي (BMP یا بشپړ)
-        if t.isUnicode():
-            t.cmap.update(added)
-    font.save(str(path))
-    return len(added)
+    # ۲) هغه توري چې کتابتون یې پېژني، خو فونټ یې بڼې نه لري
+    for base in DIRECT:
+        for utag, otag in TAGS:
+            cp = uni.get(base, {}).get(utag)
+            if cp is None or cp in cmap:
+                continue
+            g = glyph(base, otag)
+            if g is not None:
+                add[cp] = g
+    return add, back
+
+
+def write_dart(back):
+    L = []
+    L.append('// **جوړ شوی فایل — په لاس یې مه بدلوه.**')
+    L.append('//')
+    L.append('// سرچینه: tool/font/add_pashto_pdf_forms.py')
+    L.append('library;')
+    L.append('')
+    L.append('/// **پښتو توری → پوروړی توری.**')
+    L.append('///')
+    L.append('/// د PDF کتابتون د پښتو دا توري نه پېژني، نو نه یې تړي.')
+    L.append('/// پرځای یې یو پوروړی عربي توری ورکوو چې کتابتون یې')
+    L.append('/// پېژني او د تړلو ډول یې هماغه دی؛ فونټ بیا د پوروړي د')
+    L.append('/// بڼو پر ځای د پښتو ګلیفونه رسموي.')
+    L.append('const Map<int, int> kPashtoDonor = {')
+    for p, (d, pc, dc) in sorted(DONORS.items()):
+        L.append('  0x%04X: 0x%04X, // %s → %s' % (p, d, pc, dc))
+    L.append('};')
+    L.append('')
+    L.append('/// **د پوروړي بڼه → اصلي پښتو توری.**')
+    L.append('///')
+    L.append('/// د PDF د `ToUnicode` جدول سمولو لپاره — نو له دوسیې')
+    L.append('/// کاپي شوی متن ریښتینی پښتو وي.')
+    L.append('const Map<int, int> kDonorFormToPashto = {')
+    for cp in sorted(back):
+        L.append('  0x%04X: 0x%04X, // %s' % (cp, back[cp], chr(back[cp])))
+    L.append('};')
+    OUT_DART.write_text('\n'.join(L) + '\n', encoding='utf-8')
 
 
 def main():
-    table = read_table()
-    total = 0
+    if not FONTS:
+        raise SystemExit('هیڅ فونټ ونه موندل شو')
+
+    _, back = plan(TTFont(str(FONTS[0])))
+    write_dart(back)
+    print(f'✓ {OUT_DART.relative_to(ROOT)}: {len(back)} بڼې')
+
     for p in FONTS:
-        if not p.exists():
-            print(f'… {p.name} نشته — پرېښودل شو')
-            continue
-        n = patch(p, table)
-        total += n
-        print(f'✓ {p.name}: {n} نوې cmap کرښې')
-    if total == 0:
-        print('هیڅ بدلون نه و پکار — فونټونه لا دمخه بشپړ دي.')
-    return 0
+        font = TTFont(str(p))
+        add, _ = plan(font)
+        glyphs = set(font.getGlyphOrder())
+        real = {cp: g for cp, g in add.items() if g in glyphs}
+        for t in font['cmap'].tables:
+            if t.isUnicode():
+                t.cmap.update(real)
+        font.save(str(p))
+        print(f'✓ {p.name}: {len(real)} cmap کرښې')
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    main()

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart' show ZLibEncoder;
+
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
@@ -9,6 +11,7 @@ import 'package:xml/xml.dart';
 
 import '../../core/app_info.dart';
 import '../../core/date/pashto_calendar.dart';
+import '../../core/text/pashto_pdf_forms.g.dart';
 import '../../core/text/pashto_text.dart';
 import '../../data/models/models.dart';
 
@@ -89,6 +92,8 @@ class EventPdf {
     final theme = pw.ThemeData.withFont(base: _regular!, bold: _bold!);
     final doc = pw.Document(
       compress: compress,
+      // د کاپي کولو لپاره — وګورئ [_fixToUnicode]
+      deflate: _fixToUnicode,
       title: _t(e.title),
       author: e.persons.isEmpty ? kAppName : e.persons.map(_t).join('، '),
       subject: e.category.isEmpty ? 'د آرشیف پیښه' : _t(e.category),
@@ -109,10 +114,8 @@ class EventPdf {
         footer: (c) => _footer(c, e),
         build: (context) => [
           _titleBlock(e),
-          pw.SizedBox(height: 14),
-          _identityTable(e),
           if (e.summary.isNotEmpty) ...[
-            pw.SizedBox(height: 18),
+            pw.SizedBox(height: 20),
             _sectionTitle('۱', 'لنډیز'),
             pw.Paragraph(
               text: _t(e.summary),
@@ -146,16 +149,20 @@ class EventPdf {
         header: (_) => _letterhead(e),
         footer: (c) => _footer(c, e),
         build: (context) => [
-          _sectionTitle(_nextNo(e, 'metadata'), 'میټاډیټا (metadata.json)'),
+          _sectionTitle(_nextNo(e, 'metadata'), 'میټاډیټا'),
           pw.Paragraph(
-            text: 'لاندې جدول د پیښې ټول ثبت شوي ډګرونه ښیي. اصلي '
-                'فایل د همدې PDF دننه دوه ځایه ضمیمه دی: د XMP په '
-                'بڼه، او د PDF د ضمیمو (Embedded Files) په بڼه — نو '
-                'له همدې یوې دوسیې نه پیښه بیا جوړېدلی شي.',
+            text: _t('دا پاڼه د پیښې بشپړ ثبت دی. اصلي فایل د همدې '
+                'PDF دننه دوه ځایه ضمیمه دی: د XMP په بڼه، او د PDF '
+                'د ضمیمو (Embedded Files) په بڼه — نو له همدې یوې '
+                'دوسیې نه پیښه بیا جوړېدلی شي.'),
             style: const pw.TextStyle(
                 fontSize: 9.5, lineSpacing: 3.5, color: _muted),
           ),
-          pw.SizedBox(height: 6),
+          pw.SizedBox(height: 10),
+          _subTitle('الف — پېژندنه'),
+          _identityTable(e),
+          pw.SizedBox(height: 14),
+          _subTitle('ب — خام ثبت (metadata.json)'),
           _metadataTable(e),
         ],
       ),
@@ -296,7 +303,7 @@ class EventPdf {
         child: pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.end,
           children: [
-            pw.Text(kAppName,
+            pw.Text(_t(kAppName),
                 style: pw.TextStyle(
                     fontSize: 9.5,
                     fontWeight: pw.FontWeight.bold,
@@ -323,8 +330,8 @@ class EventPdf {
                 style: const pw.TextStyle(fontSize: 8, color: _muted)),
             pw.Expanded(child: pw.SizedBox()),
             pw.Text(
-              'مخ ${PashtoDigits.to(c.pageNumber)} له '
-              '${PashtoDigits.to(c.pagesCount)}',
+              _t('مخ ${PashtoDigits.to(c.pageNumber)} له '
+                  '${PashtoDigits.to(c.pagesCount)}'),
               style: const pw.TextStyle(fontSize: 8, color: _muted),
             ),
           ],
@@ -340,23 +347,48 @@ class EventPdf {
     return parts.isEmpty ? e.id : parts.last;
   }
 
-  static pw.Widget _titleBlock(EventMetadata e) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.center,
-        children: [
-          pw.Text('د آرشیف سند',
-              style: const pw.TextStyle(
-                  fontSize: 8.5, letterSpacing: 1.4, color: _muted)),
-          pw.SizedBox(height: 5),
-          pw.Text(
-            _t(e.title),
-            textAlign: pw.TextAlign.center,
+  /// **د سند مخ.**
+  ///
+  /// رسمي سند له یوه پاک سرلیک څخه پیل کیږي: د سند ډول، بیا
+  /// عنوان، بیا یوه نرۍ کرښه، او تر هغې لاندې یوه **یوه‑کرښیزه**
+  /// پېژندنه (نېټه · کټګوري · درجه). ټول جدولونه وروستۍ پاڼې ته
+  /// ولېږدېدل — نو لومړۍ پاڼه د لوستلو ده، نه د ډیټا.
+  static pw.Widget _titleBlock(EventMetadata e) {
+    final strip = <String>[
+      _t(e.date.shamsiText),
+      if (e.category.isNotEmpty) _t(e.category),
+      '${PashtoDigits.to(e.rating)}/۵',
+    ].join('   ·   ');
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        pw.SizedBox(height: 6),
+        pw.Text(_t('د آرشیف سند'),
+            style: const pw.TextStyle(fontSize: 9, color: _muted)),
+        pw.SizedBox(height: 8),
+        pw.Text(
+          _t(e.title),
+          textAlign: pw.TextAlign.center,
+          style: pw.TextStyle(
+              fontSize: 18, fontWeight: pw.FontWeight.bold, color: _ink),
+        ),
+        pw.SizedBox(height: 9),
+        pw.Container(width: 110, height: 1.2, color: _ink),
+        pw.SizedBox(height: 9),
+        pw.Text(strip,
+            style: const pw.TextStyle(fontSize: 9.5, color: _muted)),
+        pw.SizedBox(height: 4),
+        pw.Divider(color: _rule, height: 0.5),
+      ],
+    );
+  }
+
+  static pw.Widget _subTitle(String text) => pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 5, top: 2),
+        child: pw.Text(_t(text),
             style: pw.TextStyle(
-                fontSize: 17, fontWeight: pw.FontWeight.bold, color: _ink),
-          ),
-          pw.SizedBox(height: 7),
-          // نرۍ منځنۍ کرښه — د رسمي سند نښه
-          pw.Container(width: 90, height: 1.4, color: _ink),
-        ],
+                fontSize: 10, fontWeight: pw.FontWeight.bold, color: _muted)),
       );
 
   /// **د پېژندنې جدول** — هغه څه چې فلټر پرې کار کوي.
@@ -373,6 +405,7 @@ class EventPdf {
       if (e.persons.isNotEmpty) ('شخصیتونه', e.persons.map(_t).join('، ')),
       ('ضمیمې', '${PashtoDigits.to(e.attachmentCount)} فایله  ·  '
           '${_bytes(e.totalBytes)}'),
+      ('د سند شمېره', e.id),
       ('د پوښۍ مسیر', e.folderPath),
     ];
 
@@ -530,7 +563,7 @@ class EventPdf {
               padding:
                   const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 4),
               child: pw.Text(
-                caption.isEmpty ? kind : '$kind — $caption',
+                _t(caption.isEmpty ? kind : '$kind — $caption'),
                 style: pw.TextStyle(
                     fontSize: 9.5,
                     fontWeight: pw.FontWeight.bold,
@@ -549,8 +582,8 @@ class EventPdf {
                           const pw.TextStyle(fontSize: 9, color: _muted)),
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    'دا ډول فایل په PDF کې نه چلیږي — اصلي فایل د '
-                    'پیښې په پوښۍ کې وګورئ.',
+                    _t('دا ډول فایل په PDF کې نه چلیږي — اصلي فایل د '
+                        'پیښې په پوښۍ کې وګورئ.'),
                     style: const pw.TextStyle(fontSize: 8.5, color: _muted),
                   ),
                 ],
@@ -697,14 +730,72 @@ class EventPdf {
   static final _invisible = RegExp(
       '[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]');
 
-  static String _t(String s) => s.replaceAll(_invisible, '');
+  /// **پاکونکی + د پور تورو بدلونکی.**
+  ///
+  /// دوه کاره کوي:
+  ///
+  /// ۱. نه‌لیدونکي توري (ZWNJ او د بایډي نښې) غورځوي — هغه د
+  ///    PDF کتابتون د یوه عادي توري په څېر چلوي، نو کلمه
+  ///    ماتوي: «پ‌ښ‌تو» → «پ ښ تو».
+  ///
+  /// ۲. د پښتو هغه لس توري چې کتابتون یې **نه پېژني** (ټ ځ څ ډ
+  ///    ړ ږ ښ ګ ڼ ۍ) خپلو **پوروړو** ته اړوي. ولې؟ ځکه کتابتون
+  ///    یوازې هغه توري تړي چې خپل جدول کې یې ولري؛ نور یې
+  ///    بې‌تړلې پرېږدي او د هغو ګاونډیان هم ماتوي:
+  ///
+  ///        چټک → چ ټ ک        کټګوري → ک ټ ګوري
+  ///
+  ///    پوروړی توری هغه اردو/سندي توری دی چې کتابتون یې پېژني،
+  ///    د تړلو ډول یې هماغه دی، او پښتو یې هیڅکله نه کاروي. فونټ
+  ///    بیا د پوروړي د بڼو پر ځای د پښتو ګلیفونه رسموي
+  ///    (`tool/font/add_pashto_pdf_forms.py`).
+  ///
+  ///    او د کاپي کولو لپاره؟ د PDF `ToUnicode` جدول بېرته
+  ///    سمیږي — وګورئ [_fixToUnicode].
+  static String _t(String s) {
+    final clean = s.replaceAll(_invisible, '');
+    if (clean.isEmpty) return clean;
+    return String.fromCharCodes(
+        clean.runes.map((r) => kPashtoDonor[r] ?? r));
+  }
+
+  /// **د کاپي کولو سموونکی.**
+  ///
+  /// PDF د هر ګلیف لپاره یو `ToUnicode` جدول لري — هغه چې
+  /// کاپي/لټون پرې ولاړ دی. زمونږ د پور تورو له امله هلته اردو
+  /// توري لیکل کیږي، نو دلته یې بېرته اصلي پښتو ته اړوو.
+  ///
+  /// دا د `deflate` له لارې کیږي: کتابتون هر جریان مونږ ته
+  /// راکوي چې کمپرس یې کړو — نو مخکې تر کمپرس یې سموو.
+  static List<int> _fixToUnicode(List<int> raw) {
+    // یوازې د CMap جریانونه — نور بې‌لاسوهنې کمپرس کیږي.
+    const marker = 'begincmap';
+    if (raw.length > 24 && raw.length < 1 << 20) {
+      final text = latin1.decode(raw, allowInvalid: true);
+      if (text.contains(marker)) {
+        final fixed = text.replaceAllMapped(
+          RegExp(r'<([0-9A-Fa-f]{4})>\s*<([0-9A-Fa-f]{4})>'),
+          (m) {
+            final to = int.parse(m[2]!, radix: 16);
+            final real = kDonorFormToPashto[to];
+            if (real == null) return m[0]!;
+            return '<${m[1]}> <${real.toRadixString(16).toUpperCase().padLeft(4, '0')}>';
+          },
+        );
+        return const ZLibEncoder().encode(latin1.encode(fixed));
+      }
+    }
+    return const ZLibEncoder().encode(raw);
+  }
 
   /// لینکونه په PDF کې هم کلیک‌کېدونکي کوي.
   static pw.Widget _linked(String raw, {double size = 10.5}) {
-    final text = _t(raw);
+    // **لومړی لینکفای، بیا بدلون.** که برعکس یې وکړو، د لینک
+    // پېژندونکی به بدل شوي توري ونه پېژني او پته به مات شي.
+    final text = raw.replaceAll(_invisible, '');
     final chunks = linkify(text);
     if (!chunks.any((c) => c.isLink)) {
-      return pw.Text(text,
+      return pw.Text(_t(text),
           style: pw.TextStyle(fontSize: size, lineSpacing: 4));
     }
     return pw.RichText(
@@ -720,7 +811,7 @@ class EventPdf {
                 annotation: pw.AnnotationUrl(c.url!),
               )
             else
-              pw.TextSpan(text: c.text),
+              pw.TextSpan(text: _t(c.text)),
         ],
       ),
     );

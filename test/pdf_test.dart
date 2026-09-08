@@ -271,14 +271,18 @@ void main() {
     //
     // علت زما خپل کوډ و: ZWNJ مې په **تشه** بدلاوه، نو هره کلمه
     // چې ZWNJ پکې و، ټوټې ټوټې کېده. اوس یې بیخي غورځوو.
-    const zwnj = '‌';
-    expect(EventPdf.cleanText('پ$zwnj' 'ښ$zwnj' 'تو'), 'پښتو');
+    const zwnj = '\u200C';
+    // ZWNJ غورځیږي — کلمه بېرته یوځای کیږي. (ښ پوروړي ته اوړي،
+    // نو د توري پرتله نه کوو، بلکه دا چې تشه پکې نه راځي.)
+    expect(EventPdf.cleanText('پ$zwnj' 'ښ$zwnj' 'تو').length, 4);
+    expect(EventPdf.cleanText('پ$zwnj' 'ښ$zwnj' 'تو'), isNot(contains(' ')));
     expect(EventPdf.cleanText('ربیع$zwnj' 'الاول'), 'ربیعالاول');
     // نورې نه‌لیدونکې نښې هم
     expect(
         EventPdf.cleanText('a\u200Eb\u202Bc\uFEFFd'), 'abcd');
-    // عادي متن نه بدلیږي
-    expect(EventPdf.cleanText('د کابل تړون'), 'د کابل تړون');
+    // عادي متن یوازې د پوروړو له مخې بدلیږي (ړ → ڑ)، نه بل څه.
+    // د هغې بشپړه ازموینه: test/pashto_pdf_forms_test.dart
+    expect(EventPdf.cleanText('د کابل کور'), 'د کابل کور');
 
     // او په ریښتیني PDF کې هم: ZWNJ فونټ ته نه رسیږي
     final e = EventMetadata(

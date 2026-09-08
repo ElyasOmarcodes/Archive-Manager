@@ -212,9 +212,27 @@ class _UiScale extends StatelessWidget {
         child: Transform.scale(
           scale: scale,
           alignment: Alignment.topRight, // RTL — له ښي څنډې پیل
-          child: SizedBox(
-            width: w,
-            height: h,
+          // **ولې `OverflowBox`، نه یوازې `SizedBox`؟**
+          //
+          // دا هغه باګ و چې کاروونکي ولید: کله یې چې پروګرام له
+          // «عادي» څخه کوچنی کاوه، چپ او لاندې خوا ته یوه **توره
+          // خلا** راتله.
+          //
+          // علت: `SizedBox` خپلې اندازې د راغلو قیدونو له مخې
+          // **راتنګوي** (`enforce`). نو کله چې مونږ ۹۰۰px پرده
+          // ۱۰۰۰px وغوښته، هغه بېرته ۹۰۰ شوه — بیا یې
+          // `Transform` پر ۰.۹ ووهله او پایله یې ۸۱۰px شوه. پاتې
+          // ۹۰px هیڅ چا رنګ نه کاوه، نو تور پاتې شو.
+          //
+          // `OverflowBox` پخپله د پلار په اندازه وي، خو اولاد ته
+          // نوي، پراخ قیدونه ورکوي — نو ۱۰۰۰px ریښتیا ۱۰۰۰ وي، او
+          // تر `Transform` روسته دقیقاً ۹۰۰ ډکوي.
+          child: OverflowBox(
+            alignment: Alignment.topRight,
+            minWidth: w,
+            maxWidth: w,
+            minHeight: h,
+            maxHeight: h,
             child: MediaQuery(
               // منطقي پرده هم باید نوې اندازه وپېژني، ګنې د
               // ریسپانسیف پرېکړې (لکه د سایډبار راټولېدل) ناسمې شي.
