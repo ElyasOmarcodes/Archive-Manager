@@ -6,7 +6,6 @@ import 'package:archive_manager/data/repository/app_state.dart';
 import 'package:archive_manager/features/onboarding/boot_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
 
 import 'smoke_test.dart' show wrap;
 
