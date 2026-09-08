@@ -49,6 +49,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    # د پروګرام ایکن — هماغه چې د .exe لپاره جوړیږي
+    # (`tool/icon/make_icon.py`). نو د وینډوز ایکن او د پروګرام
+    # دننه نښه تل یو شان وي.
+    - assets/icon/
     - assets/fonts/
     # دا woff2 فایلونه د پروګرام دننه نه کارول کیږي — بلکه یو ځل د
     # آرشیف ریښې ته لیکل کیږي، نو هره جوړه شوې `index.html` پاڼه یې

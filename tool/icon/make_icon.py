@@ -127,6 +127,17 @@ def main():
     icon.resize((32, 32), Image.LANCZOS).save('web/favicon.png')
     print('✓ web/favicon.png')
 
+    # ── د پروګرام **دننه** ──
+    #
+    # کاروونکي وغوښتل چې هماغه ایکن په پروګرام کې هم وکارول شي
+    # (سایډبار، د پیل پاڼه). نو هغه هم له همدې یوې سرچینې راوځي —
+    # ګنې د .exe ایکن او د پروګرام دننه نښه به سره بېلې شي.
+    #
+    # ۵۱۲px بس دی: تر ټولو لویه کارونه یې ~۹۲px ده، نو د لوړې
+    # کچې پردو (۲×، ۳×) لپاره هم ډېر ځای پاتې دی.
+    icon.resize((512, 512), Image.LANCZOS).save('assets/icon/app-icon.png')
+    print('✓ assets/icon/app-icon.png')
+
     # ── د سندونو لپاره ──
     icon.resize((256, 256), Image.LANCZOS).save('docs/app-icon.png')
     print('✓ docs/app-icon.png')

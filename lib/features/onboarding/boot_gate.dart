@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/tokens.dart';
 import '../../data/repository/app_state.dart';
+import '../../widgets/common.dart';
 import '../shell/app_shell.dart';
 import 'intro_page.dart';
 import 'missing_root_page.dart';
@@ -53,27 +54,9 @@ class _Splash extends StatelessWidget {
               builder: (_, v, child) =>
                   Transform.scale(scale: v, child: Opacity(
                       opacity: v.clamp(0.0, 1.0), child: child)),
-              child: Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [AppTokens.brand, AppTokens.brandAlt],
-                  ),
-                  borderRadius: AppTokens.brXl,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTokens.brand.withValues(alpha: 0.4),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.inventory_2_rounded,
-                    color: Colors.white, size: 38),
-              ),
+              // د پیل پاڼه هم د پروګرام خپل ایکن ښیي — نه یو
+              // عمومي Material ایکن.
+              child: const AppLogo(size: 76),
             ),
             const SizedBox(height: AppTokens.s24),
             Text('د آرشیف چټک مدیر',

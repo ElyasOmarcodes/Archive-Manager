@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/app_info.dart';
 import '../../core/date/pashto_calendar.dart';
 import '../../core/theme/tokens.dart';
+import '../../data/platform/backend.dart' show ScanProgress;
 import '../../data/repository/app_state.dart';
 import '../../widgets/common.dart';
 
@@ -237,7 +239,7 @@ class _Brand extends StatelessWidget {
                             color: cs.onSurface,
                             height: 1.3)),
                     Text(
-                      'v1.2.0 · ${driveLabel(s.settings.archiveRoot)}',
+                      'v$kAppVersion · ${driveLabel(s.settings.archiveRoot)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,
@@ -282,26 +284,11 @@ class _AppMark extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(13),
-        child: AnimatedContainer(
+        // د پروګرام خپل ایکن — هماغه چې پر ډیسکټاپ او په ټاسک بار
+        // کې ښکاري. نو کاروونکی سمدلاسه پېژني چې کوم پروګرام دی.
+        child: AnimatedSize(
           duration: AppTokens.base,
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: [Color(0xFF4F8DF9), Color(0xFF4F6BED)],
-            ),
-            borderRadius: BorderRadius.circular(13),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF4F8DF9).withValues(alpha: 0.42),
-                blurRadius: 14,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Icon(Icons.hub_rounded, color: Colors.white, size: size * 0.52),
+          child: AppLogo(size: size, radius: 13),
         ),
       ),
     );
@@ -616,6 +603,16 @@ class _DriveFooter extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // **د سکن پرمختګ دلته دی.**
+          //
+          // پخوا یوازې په پورتني بار کې و، خو هغه اوس یوازې د
+          // ډاشبورډ پاڼه کې ښکاري. سایډبار هره پاڼه کې شته — نو
+          // د اوږد سکن پر مهال کاروونکی هر ځای پوهیږي چې څه روان
+          // دي، او ټول شوي سایډبار کې هم یوازې کرښه پاتې کیږي.
+          if (s.scan != null) ...[
+            _ScanLine(progress: s.scan!, t: t),
+            const SizedBox(height: AppTokens.s8),
+          ],
           Row(
             children: [
               // په ټول شوي حالت کې یوازې نښه پاتې کیږي — نو مرکز ته یې راولو
@@ -701,6 +698,69 @@ class _DriveFooter extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// د سکن نری بار — د سایډبار په پایښت کې، نو هره پاڼه کې لیدل کیږي.
+class _ScanLine extends StatelessWidget {
+  const _ScanLine({required this.progress, required this.t});
+
+  final ScanProgress progress;
+  final double t;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // د سکن پای نه دی معلوم (ډرایو څومره ژور دی؟) — نو بار
+    // نامعلوم (indeterminate) دی، او شمېره یې د موندل شویو پیښو.
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _Reveal(
+          t: t,
+          axis: Axis.vertical,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 11,
+                  height: 11,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 1.8, color: cs.primary),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'سکن روان دی…',
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: cs.primary),
+                  ),
+                ),
+                Text(
+                  '${PashtoDigits.to(progress.found)} پیښې',
+                  style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            minHeight: 3,
+            backgroundColor: cs.surfaceContainerHigh,
+            color: cs.primary,
+          ),
+        ),
+      ],
     );
   }
 }

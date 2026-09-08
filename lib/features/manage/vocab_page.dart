@@ -264,8 +264,18 @@ class _VocabPageState extends State<VocabPage> {
                     ),
                   ),
                   const SizedBox(width: AppTokens.s12),
+                  // **پام: لوړوالی.**
+                  //
+                  // پخوا دا فیلډ تر خپلو ګاونډیو (لټون، ترتیب)
+                  // جګ و. علت `suffixIcon: IconButton` و —
+                  // Material هرې تڼۍ ته د لمس لپاره ۴۸px
+                  // لږترلږه لوړوالی ورکوي، او هغه فیلډ پرېکوي.
+                  //
+                  // نو دلته هم هماغه بڼه چې `SearchBox` لري:
+                  // ثابت `controlH` + د ایکنونو تنګې پولې.
                   SizedBox(
                     width: 260,
+                    height: AppTokens.controlH,
                     child: TextField(
                       controller: _add,
                       onSubmitted: (_) => _addTerm(),
@@ -273,12 +283,16 @@ class _VocabPageState extends State<VocabPage> {
                       decoration: InputDecoration(
                         hintText: 'نوی ${widget.kind.singular}…',
                         prefixIcon: Icon(_icon, size: 17),
-                        prefixIconConstraints:
-                            const BoxConstraints(minWidth: 38, minHeight: 36),
+                        prefixIconConstraints: const BoxConstraints(
+                            minWidth: 34, minHeight: AppTokens.controlH),
+                        suffixIconConstraints: const BoxConstraints(
+                            minWidth: 32, minHeight: AppTokens.controlH),
                         suffixIcon: IconButton(
                           icon: const Icon(Icons.add_rounded, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                              minWidth: 28, minHeight: 28),
                           onPressed: _addTerm,
-                          splashRadius: 16,
                         ),
                       ),
                     ),

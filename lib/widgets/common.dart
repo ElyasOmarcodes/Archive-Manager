@@ -914,10 +914,18 @@ class _LinkedTextState extends State<LinkedText> {
 /// دلته هره ساحه خپل کنټرولر لري، نو بار یې سم مومي او د موس په
 /// واسطه کش کېدونکی وي.
 class ScrollArea extends StatefulWidget {
-  const ScrollArea({super.key, required this.builder});
+  const ScrollArea({
+    super.key,
+    required this.builder,
+    this.scrollbar = true,
+  });
 
   final Widget Function(BuildContext context, ScrollController controller)
       builder;
+
+  /// د لنډو، افقي کرښو لپاره (لکه د تنظیماتو ټبونه) بار پکار نه
+  /// دی — یوازې سترګې ستړې کوي. کنټرولر بیا هم خپل وي.
+  final bool scrollbar;
 
   @override
   State<ScrollArea> createState() => _ScrollAreaState();
@@ -933,10 +941,11 @@ class _ScrollAreaState extends State<ScrollArea> {
   }
 
   @override
-  Widget build(BuildContext context) => Scrollbar(
-        controller: _c,
-        child: widget.builder(context, _c),
-      );
+  Widget build(BuildContext context) {
+    final child = widget.builder(context, _c);
+    if (!widget.scrollbar) return child;
+    return Scrollbar(controller: _c, child: child);
+  }
 }
 
 /// **د ټولو شویو برخو یادښت.**
@@ -1146,4 +1155,61 @@ void toast(BuildContext context, String message, {bool error = false}) {
 Future<void> copyText(BuildContext context, String text, {String? label}) async {
   await Clipboard.setData(ClipboardData(text: text));
   if (context.mounted) toast(context, '${label ?? 'متن'} کاپي شو');
+}
+
+/// **د پروګرام نښه** — هماغه ایکن چې د وینډوز `.exe` پرې ولاړ دی.
+///
+/// **ولې انځور، نه یو Material ایکن؟** پخوا سایډبار
+/// `Icons.hub_rounded` ښوده، د پیل پاڼه `Icons.inventory_2_rounded`
+/// — یعنې د پروګرام «مخ» په درېو ځایونو کې درې ډوله و، او هیڅ یو
+/// یې د هغه ایکن سره نه ورته وو چې کاروونکی یې پر ډیسکټاپ ویني.
+///
+/// اوس یوه سرچینه ده: `tool/icon/make_icon.py` هم `.ico` جوړوي، هم
+/// `assets/icon/app-icon.png` — نو دواړه تل یو شان وي.
+class AppLogo extends StatelessWidget {
+  const AppLogo({
+    super.key,
+    this.size = 38,
+    this.radius,
+    this.shadow = true,
+  });
+
+  final double size;
+
+  /// د ګردو کونجونو وږمه. که تشه وي، د ایکن د خپل ډیزاین مطابق
+  /// (~۲۲.۵٪) حسابیږي — نو په هره اندازه کې یو شان ښکاري.
+  final double? radius;
+
+  final bool shadow;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = radius ?? size * 0.225;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(r),
+        boxShadow: shadow
+            ? [
+                BoxShadow(
+                  color: AppTokens.brand.withValues(alpha: 0.38),
+                  blurRadius: size * 0.36,
+                  offset: Offset(0, size * 0.13),
+                ),
+              ]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(r),
+        child: Image.asset(
+          'assets/icon/app-icon.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+        ),
+      ),
+    );
+  }
 }

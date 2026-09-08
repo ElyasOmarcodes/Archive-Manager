@@ -52,6 +52,28 @@ void main() {
           final e = t.takeException();
           expect(e, isNull,
               reason: '$label · ${theme.name} · ${page.name} → $e');
+
+          // **د تنظیماتو هره ډله جلا ده.** پاڼه اوس رېل + محتوا
+          // ده، نو یوازې د پاڼې لیدل کافي نه دي — هره ډله باید
+          // پخپله وګورو، ګنې د یوې ډلې ماتوالی پټ پاتې کیږي.
+          if (page == AppPage.settings) {
+            for (final tab in ['بڼه', 'تقویم', 'آرشیف', 'لنډیز', 'په اړه']) {
+              final f = find.text(tab);
+              if (f.evaluate().isEmpty) continue;
+              await t.tap(f.first);
+              await t.pumpAndSettle();
+              final e2 = t.takeException();
+              expect(e2, isNull,
+                  reason: '$label · ${theme.name} · تنظیمات/$tab → $e2');
+            }
+            // بېرته لومړۍ ډلې ته، نو راتلونکې کچه له سره پیل کړي
+            final back = find.text('بڼه');
+            if (back.evaluate().isNotEmpty) {
+              await t.tap(back.first);
+              await t.pumpAndSettle();
+              t.takeException();
+            }
+          }
         }
 
         // ایډیټر او پریویو هم

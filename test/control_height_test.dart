@@ -68,4 +68,26 @@ void main() {
           reason: 'tapTargetSize.shrinkWrap باید فعال وي — ونه: $filled');
     }
   });
+
+  testWidgets('د کیورډ/کټګورۍ/شخص پاڼې ټولبار: ټول یو لوړوالی',
+      (t) async {
+    // کاروونکي راپور کړه: «د نوي ایټم د ثبت فیلډ په عمودي توګه د
+    // نورو څخه لوړ دی». علت هماغه زوړ و — د فیلډ دننه
+    // `suffixIcon: IconButton` چې Material یې ۴۸px کوي.
+    for (final page in [AppPage.keywords, AppPage.categories,
+                        AppPage.persons]) {
+      final s = await boot(t);
+      s.go(page);
+      await t.pumpAndSettle();
+
+      // په ټولبار کې ټول `TextField`ونه — لټون او د ثبت فیلډ
+      final fields = heights(t, find.byType(TextField));
+      expect(fields, isNotEmpty, reason: '$page فیلډونه لري');
+      for (final h in fields) {
+        expect(h, AppTokens.controlH,
+            reason: '$page کې یو فیلډ $h دی، نه ${AppTokens.controlH} '
+                '— ونه: $fields');
+      }
+    }
+  });
 }
