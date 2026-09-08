@@ -7,30 +7,41 @@ import '../../data/repository/app_state.dart';
 import 'window_controls.dart'
     if (dart.library.io) 'window_controls_io.dart';
 
-/// **د پروګرام خپل ټایټل بار — د macOS په څېر.**
+/// **د پروګرام خپل ټایټل بار.**
 ///
 /// د وینډوز اصلي بار پټ دی. پرځای یې دا کرښه راځي:
 ///
 /// ```
-/// ● ● ●            د آرشیف چټک مدیر            [حالت]
+///            د آرشیف چټک مدیر            ● ● ●
 /// ```
 ///
-/// * درې ګردې تڼۍ **چپ لور ته** — دقیقاً لکه macOS. رنګونه یې هم
-///   هماغه دي: سور (تړل)، ژیړ (ښکته)، شین (لوی/کوچنی).
-/// * ایکنونه یوازې د ماوس د تېرېدو پر مهال ښکاري — نوی macOS
-///   همداسې کوي؛ په عادي حالت کې یوازې پاک رنګین دایرې دي.
+/// * درې ګردې تڼۍ **ښي لور ته** — ځکه چې په وینډوز کې د هر
+///   پروګرام تڼۍ هلته وي، او کاروونکی یې هملته لټوي.
+/// * ترتیب یې هم د وینډوز دی: **ښکته کول · لوی/کوچنی · تړل**،
+///   او «تړل» تر ټولو څنډې ته — نو د غلط کلیک ګواښ کم وي.
+/// * بڼه یې د macOS پاکې رنګینې دایرې دي: ژیړ (ښکته)، شین
+///   (لوی/کوچنی)، سور (تړل). ایکنونه یوازې د ماوس د تېرېدو پر
+///   مهال ښکاري — نوی macOS همداسې کوي.
 /// * سرلیک په **منځ** کې، نری او خړ — نه ډبل، نه ځلېدونکی.
 /// * ټوله کرښه د **کش کولو** وړ ده، او دوه‌ځله کلیک یې لوی/کوچنی
 ///   کوي — لکه هر عادي کړکۍ.
 ///
-/// **پام:** دا په RTL کې هم چپ لور ته پاتې کیږي. د macOS تڼۍ د
-/// ژبې له لوري سره نه ګرځي، نو مونږ یې هم `Directionality` په
-/// `ltr` کې تړو.
+/// **پام:** تڼۍ په RTL کې هم ښي لور ته پاتې کیږي، د فزیکي څنډې
+/// له مخې — نو مونږ یې `Directionality` په `ltr` کې تړو او
+/// `centerRight` ورکوو. که د ژبې له لوري سره وګرځي، په پښتو کې
+/// به چپ ته ولاړې شي او د وینډوز عادت به مات شي.
 class AppTitleBar extends StatefulWidget {
   const AppTitleBar({super.key});
 
   /// د بار لوړوالی — د macOS معیار ته نږدې.
   static const double height = 38;
+
+  /// **یوازې د ازموینې لپاره.** په ازموینو کې پروګرام ډیسکټاپ نه
+  /// دی، نو بار پخپله تش وي — او د تڼیو ځای نه شي ازمویل کېدلی.
+  /// دا بېرغ یې ښکاره کوي، نو ازموینه ګوري چې تڼۍ ریښتیا ښي
+  /// لور ته دي.
+  @visibleForTesting
+  static bool debugForceShow = false;
 
   @override
   State<AppTitleBar> createState() => _AppTitleBarState();
@@ -48,7 +59,9 @@ class _AppTitleBarState extends State<AppTitleBar> {
 
   @override
   Widget build(BuildContext context) {
-    if (!hasCustomTitleBar && !_force) return const SizedBox.shrink();
+    if (!hasCustomTitleBar && !_force && !AppTitleBar.debugForceShow) {
+      return const SizedBox.shrink();
+    }
 
     final cs = Theme.of(context).colorScheme;
     final s = context.watch<AppState>();
@@ -96,25 +109,17 @@ class _AppTitleBarState extends State<AppTitleBar> {
                   ),
                 ),
 
-                // ── د ترافیک څراغونه — تل چپ لور ته ──
+                // ── د کړکۍ تڼۍ — تل ښي لور ته، د وینډوز په څېر ──
                 Directionality(
                   textDirection: TextDirection.ltr,
                   child: Align(
-                    alignment: Alignment.centerLeft,
+                    alignment: Alignment.centerRight,
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 11),
+                      padding: const EdgeInsets.only(right: 11),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _Light(
-                            color: const Color(0xFFFF5F57),
-                            hoverColor: const Color(0xFFE0443E),
-                            icon: Icons.close_rounded,
-                            tooltip: 'تړل',
-                            show: _hovered,
-                            onTap: windowClose,
-                          ),
-                          const SizedBox(width: 8),
+                          // د وینډوز ترتیب: ښکته · لوی · تړل
                           _Light(
                             color: const Color(0xFFFEBC2E),
                             hoverColor: const Color(0xFFDEA123),
@@ -131,6 +136,16 @@ class _AppTitleBarState extends State<AppTitleBar> {
                             tooltip: 'لوی / کوچنی',
                             show: _hovered,
                             onTap: windowToggleMaximize,
+                          ),
+                          const SizedBox(width: 8),
+                          // «تړل» تر ټولو څنډې ته — لکه وینډوز
+                          _Light(
+                            color: const Color(0xFFFF5F57),
+                            hoverColor: const Color(0xFFE0443E),
+                            icon: Icons.close_rounded,
+                            tooltip: 'تړل',
+                            show: _hovered,
+                            onTap: windowClose,
                           ),
                         ],
                       ),

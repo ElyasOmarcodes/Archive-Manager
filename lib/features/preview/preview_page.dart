@@ -10,6 +10,7 @@ import '../../core/theme/tokens.dart';
 import '../../data/models/models.dart';
 import '../../data/repository/app_state.dart';
 import '../../widgets/common.dart';
+import 'export_bundle.dart';
 import 'pdf_export.dart';
 
 /// **د پیښې د پریویو پاڼه.**
@@ -788,6 +789,14 @@ class _Footer extends StatelessWidget {
 ///
 /// دوسیه د پیښې فولډر دننه ساتل کیږي (`<نوم>.pdf`)، نو له نورو
 /// شواهدو سره یو ځای پاتې کیږي.
+/// **د اکسپورټ تڼۍ — دوه لارې.**
+///
+/// کاروونکي وویل: «د اکسپورټ برخه کې دوه افشن جوړ کړه — فقط
+/// pdf، او د zip چې هم pdf لري داخل کې او هم ضمیمه شوي فایلونه».
+///
+/// نو یوه منو ده: لومړی یې د چاپ/لېږلو لپاره، دوهم یې د بشپړې
+/// بستې لپاره. دواړه هماغه یوه PDF کاروي — نو څه توپیر نه لري
+/// چې کوم یو غوره کړې، سند یو دی.
 class _ExportPdfButton extends StatefulWidget {
   const _ExportPdfButton({required this.event, this.compact = false});
 
@@ -801,7 +810,7 @@ class _ExportPdfButton extends StatefulWidget {
 class _ExportPdfButtonState extends State<_ExportPdfButton> {
   bool _busy = false;
 
-  Future<void> _run() async {
+  Future<void> _run(ExportKind kind) async {
     if (_busy) return;
     setState(() => _busy = true);
 
@@ -809,7 +818,7 @@ class _ExportPdfButtonState extends State<_ExportPdfButton> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       // انځورونه له ډیسکه راوړو — نو په PDF کې ریښتیا ښکاره شي.
-      // ویډیو/غږ نه راوړو: PDF یې نه چلوي، نو یوازې کارت ورکوو.
+      // ویډیو/غږ نه راوړو: PDF یې نه چلوي، نو یوازې کرښه ورکوو.
       final images = <String, Uint8List>{};
       for (final b in widget.event.blocks) {
         if (b.kind != BlockKind.image || b.source.isEmpty) continue;
@@ -818,10 +827,24 @@ class _ExportPdfButtonState extends State<_ExportPdfButton> {
         if (bytes != null) images[b.source] = Uint8List.fromList(bytes);
       }
 
+      final base = _safeName(widget.event.title);
       final pdf = await EventPdf.build(widget.event, images: images);
-      final name = '${_safeName(widget.event.title)}.pdf';
+
+      final (name, bytes) = switch (kind) {
+        ExportKind.pdf => ('$base.pdf', pdf),
+        ExportKind.zip => (
+            '$base.zip',
+            await ExportBundle.build(
+              event: widget.event,
+              pdf: pdf,
+              pdfName: '$base.pdf',
+              readBytes: s.backend.readBytes,
+            ),
+          ),
+      };
+
       final saved = await s.backend
-          .writeBytes(p.join(widget.event.folderPath, name), pdf);
+          .writeBytes(p.join(widget.event.folderPath, name), bytes);
 
       if (!mounted) return;
       if (saved == null) {
@@ -829,7 +852,7 @@ class _ExportPdfButtonState extends State<_ExportPdfButton> {
             content: Text('په دې نسخه کې فایل ثبتول ناشوني دي')));
       } else {
         messenger.showSnackBar(SnackBar(
-          content: Text('PDF جوړ شو: $name'),
+          content: Text('جوړ شو: $name  ·  ${humanBytes(bytes.length)}'),
           action: SnackBarAction(
             label: 'پرانیزه',
             onPressed: () => s.backend.openExternally(saved),
@@ -838,8 +861,7 @@ class _ExportPdfButtonState extends State<_ExportPdfButton> {
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-            SnackBar(content: Text('PDF جوړ نه شو: $e')));
+        messenger.showSnackBar(SnackBar(content: Text('اکسپورټ ناکام شو: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -856,24 +878,78 @@ class _ExportPdfButtonState extends State<_ExportPdfButton> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final icon = _busy
         ? const SizedBox(
             width: 16,
             height: 16,
             child: CircularProgressIndicator(strokeWidth: 2))
-        : const Icon(Icons.picture_as_pdf_rounded, size: 17);
+        : const Icon(Icons.ios_share_rounded, size: 17);
 
-    if (widget.compact) {
-      return IconButton(
-        tooltip: 'PDF ته وباسه',
-        onPressed: _busy ? null : _run,
-        icon: icon,
-      );
-    }
-    return OutlinedButton.icon(
-      onPressed: _busy ? null : _run,
-      icon: icon,
-      label: Text(_busy ? 'جوړیږي…' : 'PDF'),
+    return PopupMenuButton<ExportKind>(
+      enabled: !_busy,
+      tooltip: 'اکسپورټ',
+      position: PopupMenuPosition.under,
+      onSelected: _run,
+      itemBuilder: (_) => [
+        for (final k in ExportKind.values)
+          PopupMenuItem(
+            value: k,
+            child: Row(
+              children: [
+                Icon(
+                  k == ExportKind.pdf
+                      ? Icons.picture_as_pdf_rounded
+                      : Icons.folder_zip_rounded,
+                  size: 18,
+                  color: cs.primary,
+                ),
+                const SizedBox(width: AppTokens.s12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(k.label,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text(k.hint,
+                        style: TextStyle(
+                            fontSize: 11, color: cs.onSurfaceVariant)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+      ],
+      child: widget.compact
+          ? SizedBox(
+              width: AppTokens.controlH,
+              height: AppTokens.controlH,
+              child: Center(child: icon),
+            )
+          : Container(
+              height: AppTokens.controlH,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppTokens.s16),
+              decoration: BoxDecoration(
+                borderRadius: AppTokens.brMd,
+                border: Border.all(color: cs.outline),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  icon,
+                  const SizedBox(width: AppTokens.s8),
+                  Text(_busy ? 'جوړیږي…' : 'اکسپورټ',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: cs.primary)),
+                  const SizedBox(width: 2),
+                  Icon(Icons.expand_more_rounded, size: 16, color: cs.primary),
+                ],
+              ),
+            ),
     );
   }
 }

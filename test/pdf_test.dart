@@ -1,6 +1,7 @@
 @TestOn('linux || mac-os || windows')
 library;
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -217,5 +218,80 @@ void main() {
                 'tool/font/add_pashto_pdf_forms.py وچله');
       }
     }
+  });
+
+  test('XMP میټاډیټا د فایل دننه ده', () async {
+    // کاروونکي وویل: «د XMP Metadata په بڼه یې د فایل دننه مخفي
+    // کړه». دا هغه معیار دی چې Acrobat, Bridge او د آرشیف
+    // سیسټمونه یې پخپله لولي — نه یوازې زمونږ خپل پروګرام.
+    final e = sample();
+    final bytes = await EventPdf.build(e, compress: false);
+    final raw = utf8.decode(bytes, allowMalformed: true);
+
+    expect(raw, contains('<x:xmpmeta'));
+    expect(raw, contains('adobe:ns:meta/'));
+    expect(raw, contains('http://purl.org/dc/elements/1.1/'));
+    // معیاري ډګرونه
+    expect(raw, contains('<dc:title>'));
+    expect(raw, contains('<dc:subject>'));
+    expect(raw, contains('<dc:creator>'));
+    expect(raw, contains('<xmp:CreateDate>'));
+    // زمونږ خپل نوم‌ځای — هغه ډګرونه چې XMP یې معادل نه لري
+    expect(raw, contains('arvitch:jdn'));
+    expect(raw, contains('${e.date.jdn}'));
+    expect(raw, contains('arvitch:metadataJson'));
+    // د سند سرلیک هم پکې وي
+    expect(raw, contains(e.title));
+  });
+
+  test('وروستۍ پاڼه د میټاډیټا رسمي جدول لري', () async {
+    final e = sample();
+    final bytes = await EventPdf.build(e, compress: false);
+    final raw = String.fromCharCodes(bytes);
+
+    // لږترلږه دوه پاڼې: سند + د میټاډیټا ضمیمه
+    final pages = RegExp(r'/Type\s*/Page[^s]').allMatches(raw).length;
+    expect(pages, greaterThanOrEqualTo(2),
+        reason: 'میټاډیټا باید خپله پاڼه ولري');
+
+    // د جدول سرچینه — ټول هغه ډګرونه چې جدول یې ښیي
+    final rows = EventPdf.metadataRows(e);
+    final keys = rows.map((r) => r.key).toList();
+    for (final k in ['id', 'title', 'jdn', 'rating', 'color', 'keywords']) {
+      expect(keys, contains(k), reason: '«$k» باید په جدول کې وي');
+    }
+    // اوږد متن پکې نه وي — هغه پخپله د سند په متن کې دی
+    expect(keys, isNot(contains('text')));
+    expect(rows.firstWhere((r) => r.key == 'jdn').value, '${e.date.jdn}');
+  });
+
+  test('ZWNJ متن نه ماتوي — «پ‌ښ‌تو» → «پښتو»', () async {
+    // کاروونکي راپور کړه: «د pdf دننه د پښتو تورو څخه روسته متصل
+    // zwnj کارېدلی وي، داسې مثال: پ‌ښ‌تو».
+    //
+    // علت زما خپل کوډ و: ZWNJ مې په **تشه** بدلاوه، نو هره کلمه
+    // چې ZWNJ پکې و، ټوټې ټوټې کېده. اوس یې بیخي غورځوو.
+    const zwnj = '‌';
+    expect(EventPdf.cleanText('پ$zwnj' 'ښ$zwnj' 'تو'), 'پښتو');
+    expect(EventPdf.cleanText('ربیع$zwnj' 'الاول'), 'ربیعالاول');
+    // نورې نه‌لیدونکې نښې هم
+    expect(
+        EventPdf.cleanText('a\u200Eb\u202Bc\uFEFFd'), 'abcd');
+    // عادي متن نه بدلیږي
+    expect(EventPdf.cleanText('د کابل تړون'), 'د کابل تړون');
+
+    // او په ریښتیني PDF کې هم: ZWNJ فونټ ته نه رسیږي
+    final e = EventMetadata(
+      id: 'z',
+      title: 'پ$zwnj' 'ښ$zwnj' 'تو ژبه',
+      folderPath: '/tmp/x',
+      date: TriDate.now(),
+      summary: 'ربیع$zwnj' 'الاول میاشت',
+    );
+    final bytes = await EventPdf.build(e, compress: false);
+    final raw = String.fromCharCodes(bytes);
+    // د ToUnicode جدول کې باید ZWNJ (U+200C) هیڅ ګلیف ونه نیسي
+    expect(raw, isNot(contains('<200C>')),
+        reason: 'ZWNJ باید فونټ ته ورنه رسیږي');
   });
 }
