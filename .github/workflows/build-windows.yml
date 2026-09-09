@@ -277,16 +277,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          keep="${{ env.RELEASE_TAG }}"
-          echo "ساتل کیږي: $keep"
+          # **ټول** ریلیزونه پاکیږي — د اوسني ټګ په ګډون.
+          #
+          # ولې اوسنی هم؟ ځکه که یو زوړ ریلیز د همدې ټګ په نامه
+          # پاتې شي، ټګ یې پر **زاړه کمېټ** ولاړ وي او نوي فایلونه
+          # به یې د زړې کوډ سره یو ځای ښکاره شي. اوس هر ځل ریلیز
+          # له سره جوړیږي — نو ټګ، فایلونه او کوډ تل یو شان وي.
           gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
             --json tagName --jq '.[].tagName' | while read -r tag; do
             [ -z "$tag" ] && continue
-            if [ "$tag" != "$keep" ]; then
-              echo "  ✗ پاکیږي: $tag"
-              gh release delete "$tag" --repo "$GITHUB_REPOSITORY" \
-                --cleanup-tag --yes || true
-            fi
+            echo "  ✗ پاکیږي: $tag"
+            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" \
+              --cleanup-tag --yes || true
           done
 
       - name: ریلیز خپرول

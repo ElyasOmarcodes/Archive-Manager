@@ -35,15 +35,18 @@ import '../../data/models/models.dart';
 ///   └───────────┴─────────────────────────────────────┘
 ///   ۱. لنډیز
 ///   ۲. متن
-///   ۳. ضمیمې            (جدول)
-///   ۴. میټاډیټا         (جدول، وروستۍ پاڼه)
+///   ۳. میټاډیټا         (جدول، وروستۍ پاڼه)
 /// ```
 ///
 /// ## او د ویډیو/غږ لپاره؟
 ///
-/// PDF ویډیو یا غږ نه چلوي، نو د هغو پرځای یوه **جدولي کرښه**
-/// راځي: ډول، نوم، حجم او نسبي مسیر. نو څوک چې PDF لولي پوهیږي
-/// چې کوم شواهد شته او چېرې دي.
+/// PDF ویډیو یا غږ نه چلوي، نو د هغو پرځای یوه **کوچنۍ، پاکه
+/// نښه** راځي: یو رسم شوی شکل او د مېډیا پښتو نوم — بس. نه د
+/// فایل انګلیسی نوم، نه پسوند، نه توضیحي جمله. کاروونکي وویل چې
+/// سند باید «صفا وي او د لوستونکي فکر او سترګې خلل نکړي».
+///
+/// اصلي فایلونه بایللي نه دي: هغه د PDF **دننه ضمیمه** دي، او د
+/// وروستۍ پاڼې جدول یې شمېر او ټول حجم ښیي.
 ///
 /// ## میټاډیټا — درې ځایه
 ///
@@ -53,6 +56,9 @@ import '../../data/models/models.dart';
 ///    `content.json` د فایل دننه، نو پیښه له PDF نه بیا جوړېدلی
 ///    شي.
 /// ۳. **جدول** — د وروستۍ پاڼې پر مخ، نو انسان یې هم ولولي.
+/// د یوې مېډیا ډول — یوازې د نښې د رسمولو لپاره.
+enum _Mark { video, audio, image, file }
+
 class EventPdf {
   EventPdf._();
 
@@ -133,11 +139,11 @@ class EventPdf {
             _sectionTitle(e.summary.isEmpty ? '۱' : '۲', 'د پیښې متن'),
             ..._blocks(e, images),
           ],
-          if (e.attachments.isNotEmpty) ...[
-            pw.SizedBox(height: 18),
-            _sectionTitle(_nextNo(e, 'attachments'), 'ضمیمې'),
-            _attachments(e),
-          ],
+          // **د ضمیمو جدول دلته نشته.** کاروونکي وویل: «په خروجي
+          // PDF کې د ضمیمې جدول باید نه وي … باید صفا وي او د
+          // لوستونکي فکر او سترګې خلل نکړي». د فایلونو شمېر او
+          // ټول حجم لا هم د وروستۍ پاڼې په جدول کې دي، او اصلي
+          // فایلونه د PDF **دننه** ضمیمه شوي دي.
         ],
       ),
     );
@@ -400,8 +406,6 @@ class EventPdf {
     var n = 0;
     if (e.summary.isNotEmpty) n++;
     if (e.blocks.isNotEmpty) n++;
-    if (which == 'attachments') return PashtoDigits.to(n + 1);
-    if (e.attachments.isNotEmpty) n++;
     return PashtoDigits.to(n + 1);
   }
 
@@ -493,7 +497,7 @@ class EventPdf {
         case BlockKind.image:
           final bytes = images[b.source];
           if (bytes == null) {
-            out.add(_missingRow('انځور', b.source, _t(b.caption)));
+            out.add(_mediaMark(_Mark.image, b.caption));
             break;
           }
           out.add(pw.Padding(
@@ -520,95 +524,134 @@ class EventPdf {
 
         // ── ویډیو، غږ، نور فایلونه ──
         case BlockKind.video:
-          out.add(_missingRow('ویډیو', b.source, _t(b.caption)));
+          out.add(_mediaMark(_Mark.video, b.caption));
         case BlockKind.audio:
-          out.add(_missingRow('غږ', b.source, _t(b.caption)));
+          out.add(_mediaMark(_Mark.audio, b.caption));
         case BlockKind.file:
-          out.add(_missingRow('فایلونه', b.source, _t(b.caption)));
+          out.add(_mediaMark(_Mark.file, b.caption));
       }
     }
     return out;
   }
 
-  /// هغه شواهد چې په PDF کې نه چلیږي — یوه رسمي جدولي کرښه.
-  static pw.Widget _missingRow(String kind, String source, String caption) =>
-      pw.Container(
-        margin: const pw.EdgeInsets.symmetric(vertical: 6),
+  /// **د یوې مېډیا نښه — ساده، پاکه، بې‌انګلیسي.**
+  ///
+  /// کاروونکي وویل:
+  ///
+  /// > د ویډیو او غږیزو فایلونو نښه په PDF کې یو څه ښکلې او ساده
+  /// > جوړه کړه … اوس د PDF منځ کې د ویډیو په نښه کې انګلیسي
+  /// > کلمات او هر څه وي، نو د لوستونکي فکر ته زیات خلل کوي.
+  ///
+  /// نو نښه اوس یوازې دا لري: یو کوچنی رسم شوی شکل، د مېډیا
+  /// **پښتو** نوم، او — که وي — د کاروونکي خپل سرلیک. **نه** د
+  /// فایل نوم، **نه** پسوند، **نه** د توضیح جمله.
+  ///
+  /// د فایل بشپړ نوم او مسیر بایللی نه دی: اصلي فایل د همدې PDF
+  /// **دننه ضمیمه** دی، او د ZIP اکسپورټ کې هم راځي.
+  static pw.Widget _mediaMark(_Mark m, String caption) {
+    final text = markText(m.name, caption);
+
+    return pw.Center(
+      child: pw.Container(
+        margin: const pw.EdgeInsets.symmetric(vertical: 9),
+        padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: pw.BoxDecoration(
-          border: pw.Border.all(color: _rule, width: 0.5),
+          color: _soft,
+          borderRadius: pw.BorderRadius.circular(4),
+          border: pw.Border.all(color: _rule, width: 0.4),
         ),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
+        child: pw.Row(
+          mainAxisSize: pw.MainAxisSize.min,
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
-            pw.Container(
-              width: double.infinity,
-              color: _soft,
-              padding:
-                  const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              child: pw.Text(
-                _t(caption.isEmpty ? kind : '$kind — $caption'),
-                style: pw.TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: pw.FontWeight.bold,
-                    color: _ink),
-              ),
-            ),
-            pw.Padding(
-              padding:
-                  const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(source,
-                      textDirection: pw.TextDirection.ltr,
-                      style:
-                          const pw.TextStyle(fontSize: 9, color: _muted)),
-                  pw.SizedBox(height: 2),
-                  pw.Text(
-                    _t('دا ډول فایل په PDF کې نه چلیږي — اصلي فایل د '
-                        'پیښې په پوښۍ کې وګورئ.'),
-                    style: const pw.TextStyle(fontSize: 8.5, color: _muted),
-                  ),
-                ],
-              ),
+            pw.Text(_t(text),
+                style: const pw.TextStyle(fontSize: 9.5, color: _ink)),
+            pw.SizedBox(width: 7),
+            pw.CustomPaint(
+              size: const PdfPoint(11, 11),
+              painter: (canvas, size) => _paintMark(canvas, m),
             ),
           ],
         ),
-      );
+      ),
+    );
+  }
 
-  static pw.Widget _attachments(EventMetadata e) => _table(
-        header: const ['#', 'نوم', 'ډول', 'اندازه', 'نسبي مسیر'],
-        widths: const {
-          0: pw.FixedColumnWidth(26),
-          1: pw.FlexColumnWidth(2),
-          2: pw.FlexColumnWidth(1),
-          3: pw.FlexColumnWidth(1),
-          4: pw.FlexColumnWidth(3),
-        },
-        rows: [
-          for (var i = 0; i < e.attachments.length; i++)
-            [
-              PashtoDigits.to(i + 1),
-              e.attachments[i].name,
-              e.attachments[i].kind.label,
-              _bytes(e.attachments[i].sizeBytes),
-              e.attachments[i].relativePath,
-            ],
-        ],
-        ltrCell: (row, col) => col == 1 || col == 4,
-      );
+  /// **هغه متن چې د مېډیا په نښه کې لیکل کیږي** — د ازموینې لپاره
+  /// ښکاره دی، نو ثابته شي چې د فایل نوم/پسوند پکې نه راځي.
+  @visibleForTesting
+  static String markText(String kind, String caption) {
+    final label = switch (kind) {
+      'video' => 'ویډیو',
+      'audio' => 'غږیز فایل',
+      'image' => 'انځور',
+      _ => 'ضمیمه',
+    };
+    final c = caption.trim();
+    return c.isEmpty ? label : '$label  ·  $c';
+  }
 
-  /// **د وروستۍ پاڼې میټاډیټا.**
+  /// **د سند د برخو لیست** — د ازموینې لپاره ښکاره.
   ///
-  /// کاروونکي وویل: «اخیری پاڼه کې فقط میټاډیټا وي». نو دلته
-  /// یوازې یو جدول دی — هغه ډګرونه چې د آرشیف لپاره مهم دي. د
-  /// ضمیمو جدول پخپله د سند په بدنه کې (برخه ۳) دی، نو دلته یې
-  /// نه تکراروو.
-  ///
-  /// **اوږد ارزښتونه لنډیږي.** ولې؟ ځکه د جدول یوه کرښه د پاڼو
-  /// تر منځ نه ماتیږي — یو اوږد لنډیز به د پاڼو بې‌پایه کړۍ
-  /// جوړه کړي او ټول اکسپورټ به ناکام شي. بشپړ متن پخپله د سند
-  /// په بدنه، په XMP او په ضمیمه شوي `metadata.json` کې دی.
+  /// نو ثابته شي چې «ضمیمې» نور یوه برخه نه ده، او شمېرې یې سمې
+  /// پاتې دي.
+  @visibleForTesting
+  static List<String> sections(EventMetadata e) => [
+        if (e.summary.isNotEmpty) 'لنډیز',
+        if (e.blocks.isNotEmpty) 'د پیښې متن',
+        'میټاډیټا',
+      ];
+
+  /// د نښې کوچنی شکل — پخپله رسمیږي، نو هیڅ فونټ/ایموجي ته اړتیا
+  /// نشته او په هر چاپګر کې یو شان راځي.
+  static void _paintMark(PdfGraphics c, _Mark m) {
+    c.setColor(_muted);
+    switch (m) {
+      case _Mark.video:
+        // یوه کوچنۍ «چلولو» مثلثه
+        c
+          ..moveTo(2, 1.5)
+          ..lineTo(9.5, 5.5)
+          ..lineTo(2, 9.5)
+          ..closePath()
+          ..fillPath();
+      case _Mark.audio:
+        // د غږ څپې — څلور نري ستنې
+        const hs = [3.0, 6.5, 9.0, 5.0];
+        for (var i = 0; i < hs.length; i++) {
+          final h = hs[i];
+          c.drawRect(1.0 + i * 2.7, (11 - h) / 2, 1.5, h);
+        }
+        c.fillPath();
+      case _Mark.image:
+        // د انځور چوکاټ + یو غر
+        c
+          ..drawRect(0.8, 1.5, 9.4, 8)
+          ..strokePath();
+        c
+          ..moveTo(2.2, 3.2)
+          ..lineTo(5, 7)
+          ..lineTo(8.8, 3.2)
+          ..closePath()
+          ..fillPath();
+      case _Mark.file:
+        // یوه پاڼه چې کونج یې تاوېدلی
+        c
+          ..moveTo(1.5, 0.8)
+          ..lineTo(7, 0.8)
+          ..lineTo(9.5, 3.3)
+          ..lineTo(9.5, 10.2)
+          ..lineTo(1.5, 10.2)
+          ..closePath()
+          ..strokePath();
+        c
+          ..moveTo(7, 0.8)
+          ..lineTo(7, 3.3)
+          ..lineTo(9.5, 3.3)
+          ..strokePath();
+    }
+  }
+
   @visibleForTesting
   static List<MapEntry<String, String>> metadataRows(EventMetadata e) {
     String cut(String v) =>

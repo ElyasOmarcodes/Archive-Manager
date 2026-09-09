@@ -412,4 +412,50 @@ void main() {
       }
     });
   });
+
+  group('پاک سند', () {
+    // کاروونکي وویل: «په خروجي PDF کې د ضمیمې جدول باید نه وي …
+    // د ویډیو او غږیزو فایلونو نښه یو څه ښکلې او ساده جوړه کړه …
+    // اوس د PDF منځ کې د ویډیو په نښه کې انګلیسي کلمات او هر څه
+    // وي، نو د لوستونکي فکر ته زیات خلل کوي».
+    test('«ضمیمې» نور یوه برخه نه ده — شمېرې هم سمې دي', () {
+      final e = sample();
+      expect(EventPdf.sections(e), ['لنډیز', 'د پیښې متن', 'میټاډیټا']);
+      expect(EventPdf.sections(e), isNot(contains('ضمیمې')));
+
+      // که لنډیز نه وي، شمېرې بیا هم نه ماتیږي
+      final noSummary = sample()..summary = '';
+      expect(EventPdf.sections(noSummary), ['د پیښې متن', 'میټاډیټا']);
+    });
+
+    test('د مېډیا نښه یوازې پښتو نوم (+ سرلیک) لري', () {
+      expect(EventPdf.markText('video', ''), 'ویډیو');
+      expect(EventPdf.markText('audio', ''), 'غږیز فایل');
+      expect(EventPdf.markText('image', ''), 'انځور');
+      expect(EventPdf.markText('file', ''), 'ضمیمه');
+
+      final withCaption = EventPdf.markText('video', 'د لاسلیک شېبه');
+      expect(withCaption, contains('ویډیو'));
+      expect(withCaption, contains('د لاسلیک شېبه'));
+
+      // نه د فایل نوم، نه پسوند، نه توضیحي جمله
+      for (final t in [
+        EventPdf.markText('video', ''),
+        EventPdf.markText('audio', 'د مرکې غږ'),
+      ]) {
+        expect(t, isNot(contains('.')));
+        expect(t, isNot(contains('mp4')));
+        expect(t, isNot(contains('attachments')));
+        expect(t, isNot(contains('نه چلیږي')));
+        expect(RegExp('[A-Za-z]').hasMatch(t), isFalse,
+            reason: 'انګلیسي توري لوستونکی ګډوډوي: $t');
+      }
+    });
+
+    test('له مېډیا سره سند بیا هم سم جوړیږي', () async {
+      final bytes = await EventPdf.build(sample());
+      expect(bytes.length, greaterThan(3000));
+      expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
+    });
+  });
 }

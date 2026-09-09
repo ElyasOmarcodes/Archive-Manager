@@ -345,7 +345,10 @@ class _ActionsState extends State<_Actions> {
         // پیښې د ایکن سټایل ددې نورو سره یو شان وي باید».
         _BarButton(
           key: AppTitleBar.kNewEvent,
-          icon: Icons.add_rounded,
+          // **دایروي.** کاروونکي وویل: «دا نور ایکنونه ټول دایروي
+          // دي، یو د جمع ایکن دایره نلري» — نو جمع هم د یوې کړۍ
+          // دننه راځي.
+          icon: Icons.add_circle_outline_rounded,
           label: 'نوې پیښه',
           onTap: () {
             // **ولې د ناوبرۍ کیلي؟** دا بار د `Navigator` تر پورته
