@@ -844,6 +844,8 @@ class _AboutSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppTokens.s12),
+        const _UpdateCard(),
+        const SizedBox(height: AppTokens.s12),
         Container(
           padding: const EdgeInsets.all(AppTokens.s16),
           decoration: BoxDecoration(
@@ -868,9 +870,10 @@ class _AboutSection extends StatelessWidget {
                             fontSize: 12.5, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 3),
                     Text(
-                      'ټول آرشیف پر خپل هارډ پاتې کیږي — هیڅ څه انټرنیټ '
-                      'ته نه لېږل کیږي، او پروګرام پرته له انټرنیټه هم '
-                      'بشپړ کار کوي.',
+                      'ټول آرشیف پر خپل هارډ پاتې کیږي — هیڅ پیښه، فایل '
+                      'یا لټون انټرنیټ ته نه لېږل کیږي. پروګرام یوازې د '
+                      'خپلې اجازې او د نوې نسخې لپاره GitHub ګوري، او '
+                      'پرته له انټرنیټه هم بشپړ کار کوي.',
                       style: TextStyle(
                           fontSize: 11.5,
                           height: 1.7,
@@ -883,6 +886,91 @@ class _AboutSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// **د نوې نسخې کارت.**
+///
+/// دوه حالته لري: «تاسو په وروستۍ نسخه یاست» یا «نوې نسخه شته —
+/// ډانلوډ». ډانلوډ د GitHub رسمي پاڼه پرانیزي؛ پروګرام پخپله هیڅ
+/// فایل نه راښکته کوي او نه یې چلوي.
+class _UpdateCard extends StatelessWidget {
+  const _UpdateCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final s = context.watch<AppState>();
+    final u = s.updates;
+    final has = u.hasUpdate;
+    final tone = has ? AppTokens.brand : cs.onSurfaceVariant;
+
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s16),
+      decoration: BoxDecoration(
+        color: has
+            ? AppTokens.brand.withValues(alpha: 0.08)
+            : cs.surface,
+        borderRadius: AppTokens.brLg,
+        border: Border.all(
+            color: has
+                ? AppTokens.brand.withValues(alpha: 0.32)
+                : cs.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(
+              has
+                  ? Icons.system_update_alt_rounded
+                  : Icons.verified_rounded,
+              size: 18,
+              color: has ? AppTokens.brand : AppTokens.green),
+          const SizedBox(width: AppTokens.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  has
+                      ? 'نوې نسخه شته: ${PashtoDigits.to(u.latest!)}'
+                      : 'تاسو په وروستۍ نسخه یاست',
+                  style: const TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  has
+                      ? 'ډانلوډ یې کړئ او پر همدې پروګرام یې نصب کړئ — '
+                          'آرشیف، تنظیمات او ایندکس پر خپل ځای پاتې کیږي.'
+                      : 'نسخه ${PashtoDigits.to(kAppVersion)}',
+                  style: TextStyle(
+                      fontSize: 11.5, height: 1.7, color: tone),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppTokens.s12),
+          if (has)
+            FilledButton.icon(
+              onPressed: () => s.backend.openExternally(u.releaseUrl ?? ''),
+              icon: const Icon(Icons.download_rounded, size: 16),
+              label: const Text('ډانلوډ'),
+            )
+          else
+            OutlinedButton.icon(
+              onPressed: u.checking ? null : u.check,
+              icon: u.checking
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('وګوره'),
+            ),
+        ],
+      ),
     );
   }
 }

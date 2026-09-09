@@ -126,4 +126,61 @@ void main() {
     expect(find.text('بیا هڅه'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
+
+  test('لومړی د API پوښتنه کیږي — نه خام (کیش لرونکی) لینک', () async {
+    final urls = <String>[];
+    final gate = LicenseGate(
+      client: MockClient((r) async {
+        urls.add(r.url.host);
+        return http.Response('true', 200, headers: {'etag': 'W/"1"'});
+      }),
+      onChanged: (_, _) async {},
+    );
+
+    await gate.check();
+    expect(urls, ['api.github.com'],
+        reason: 'خام لینک ۵ دقیقې کیش کیږي — نو API لومړی دی');
+  });
+
+  test('«بدلون نشته» (۳۰۴) اوسنی متن ساتي', () async {
+    var calls = 0;
+    final gate = LicenseGate(
+      client: MockClient((r) async {
+        calls++;
+        if (calls == 1) {
+          return http.Response('true', 200, headers: {'etag': 'W/"abc"'});
+        }
+        // دویم ځل: شرطي پوښتنه باید نښه ولېږي
+        expect(r.headers['If-None-Match'], 'W/"abc"');
+        return http.Response('', 304);
+      }),
+      onChanged: (_, _) async {},
+    );
+
+    expect(await gate.check(), isTrue);
+    expect(await gate.check(), isTrue, reason: '۳۰۴ = هماغه پخوانی ځواب');
+    expect(calls, 2);
+  });
+
+  test('که API ونه چلیږي، خام لینک د کیش‌بسټر سره کاریږي', () async {
+    final tried = <Uri>[];
+    final gate = LicenseGate(
+      client: MockClient((r) async {
+        tried.add(r.url);
+        if (r.url.host == 'api.github.com') {
+          return http.Response('rate limited', 403);
+        }
+        return http.Response('false', 200);
+      }),
+      onChanged: (_, _) async {},
+    );
+
+    expect(await gate.check(), isFalse);
+    expect(gate.locked, isTrue, reason: 'خام لینک هم امر رسوي');
+    expect(tried.length, 2);
+    expect(tried.last.host, 'raw.githubusercontent.com');
+    expect(tried.last.queryParameters['t'], isNotNull,
+        reason: 'د کیش مخنیوی — ګنې ۵ دقیقې زوړ ځواب راځي');
+    expect(tried.last.host, isNot('api.github.com'));
+  });
 }

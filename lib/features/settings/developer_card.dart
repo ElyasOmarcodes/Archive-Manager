@@ -149,10 +149,15 @@ class _Hero extends StatelessWidget {
 
 /// د جوړونکي انځور، په یوه **څرخېدونکې** رنګینه کړۍ کې.
 ///
-/// کاروونکي وغوښتل چې کړۍ متحرکه شي — نو ګرادیانت په ~۸ ثانیو کې
-/// یو ځل ګرځي. دا نرم دی، نه ځلېدونکی: سترګه یې ویني، خو کار نه
-/// ورانوي. `RepaintBoundary` یې ساتي چې یوازې همدا کړۍ بیا رسمیږي،
-/// نه ټوله پاڼه.
+/// کاروونکي وویل: «د تصویر شاوخوا اسټروک باید په ډېر نرم توګه،
+/// کرار کرار تاویدونکی انیمیشن ولري». نو:
+///
+/// * یو دوران **۲۴ ثانیې** نیسي — دومره ورو چې سترګه یې «حرکت»
+///   احساسوي، نه «څرخېدل»
+/// * ګرادیانت **۱۳ رنګه** لري او هر یو یې د بل سره ګډ دی، نو د
+///   رنګونو ترمنځ کومه تېره کرښه نه ښکاري
+/// * `RepaintBoundary` یې ساتي چې یوازې همدا کړۍ بیا رسمیږي، نه
+///   ټوله پاڼه
 class _Avatar extends StatefulWidget {
   const _Avatar({required this.size});
   final double size;
@@ -164,7 +169,7 @@ class _Avatar extends StatefulWidget {
 class _AvatarState extends State<_Avatar> with SingleTickerProviderStateMixin {
   late final AnimationController _spin = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 8),
+    duration: const Duration(seconds: 24),
   );
 
   @override
@@ -208,16 +213,21 @@ class _AvatarState extends State<_Avatar> with SingleTickerProviderStateMixin {
                   height: widget.size,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
+                    // د رنګونو نرم تېرېدل — هر رنګ دوه ځله راځي،
+                    // نو د دوو رنګونو ترمنځ بدلون پراخ او نرم وي.
                     gradient: SweepGradient(
                       colors: [
                         AppTokens.brand,
+                        AppTokens.sky,
                         AppTokens.teal,
                         AppTokens.green,
                         AppTokens.amber,
+                        AppTokens.orange,
                         AppTokens.rose,
                         AppTokens.violet,
                         AppTokens.brand,
                       ],
+                      stops: [0, 0.13, 0.26, 0.39, 0.52, 0.63, 0.76, 0.89, 1],
                     ),
                   ),
                 ),

@@ -473,7 +473,7 @@ class _NewEventDialogState extends State<NewEventDialog> {
   }
 }
 
-class _CategoryChips extends StatelessWidget {
+class _CategoryChips extends StatefulWidget {
   const _CategoryChips({
     required this.categories,
     required this.selected,
@@ -485,23 +485,117 @@ class _CategoryChips extends StatelessWidget {
   final ValueChanged<String> onSelect;
 
   @override
+  State<_CategoryChips> createState() => _CategoryChipsState();
+}
+
+/// **یوازې لس ډېرې کارېدونکې — بیا «ټول وښایه».**
+///
+/// کاروونکي وویل: «د کټګوریو برخه داسې کړه چې نږدې لس دانې هغه
+/// وښودل شي چې زیات کارېدونکې وي، او تر هغه روسته د «ټول وښایه»
+/// چیپ وي». د آرشیف سره‌سره کټګورۍ زیاتیږي — نو ډایلوګ باید د
+/// سلو چپونو دیوال نه شي.
+///
+/// **ټاکل شوې کټګوري تل ښکاري** — که څه هم لږ کارېدونکې وي، ګنې
+/// کاروونکی به یې ونه ویني چې څه یې ټاکلي دي.
+class _CategoryChipsState extends State<_CategoryChips> {
+  bool _expanded = false;
+
+  static const int _visible = 10;
+
+  @override
   Widget build(BuildContext context) {
-    if (categories.isEmpty) {
+    final all = widget.categories;
+    if (all.isEmpty) {
       return Text('لا هیڅ کټګوري نه ده ثبت شوې — لاندې یې اضافه کړئ',
           style: Theme.of(context).textTheme.bodySmall);
     }
+
+    // د کارونې د شمېر له مخې ترتیب (ډېر کارېدونکې لومړی).
+    final sorted = [...all]..sort((a, b) {
+        final c = b.usageCount.compareTo(a.usageCount);
+        return c != 0 ? c : a.name.compareTo(b.name);
+      });
+
+    final shown = _expanded ? sorted : sorted.take(_visible).toList();
+    // ټاکل شوې کټګوري، که پټه پاتې شوې وي، بیرته راوړو.
+    if (!_expanded &&
+        widget.selected.isNotEmpty &&
+        !shown.any((t) => t.name == widget.selected)) {
+      final sel = sorted.where((t) => t.name == widget.selected);
+      if (sel.isNotEmpty) shown.add(sel.first);
+    }
+
+    final hidden = sorted.length - shown.length;
+
     return Wrap(
       spacing: AppTokens.s8,
       runSpacing: AppTokens.s8,
       children: [
-        for (final c in categories)
+        for (final c in shown)
           SelectChip(
             label: c.name,
-            selected: selected == c.name,
+            selected: widget.selected == c.name,
             count: c.usageCount > 0 ? c.usageCount : null,
-            onTap: () => onSelect(c.name),
+            onTap: () => widget.onSelect(c.name),
+          ),
+        if (hidden > 0 || _expanded)
+          _ShowAllChip(
+            expanded: _expanded,
+            hidden: hidden,
+            onTap: () => setState(() => _expanded = !_expanded),
           ),
       ],
+    );
+  }
+}
+
+/// **«ټول وښایه»** — د چپونو په پای کې، رنګی او متفاوت.
+class _ShowAllChip extends StatelessWidget {
+  const _ShowAllChip({
+    required this.expanded,
+    required this.hidden,
+    required this.onTap,
+  });
+
+  final bool expanded;
+  final int hidden;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTokens.rPill),
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 11),
+        decoration: BoxDecoration(
+          color: cs.primary.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(AppTokens.rPill),
+          border: Border.all(color: cs.primary.withValues(alpha: 0.45)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              expanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              size: 15,
+              color: cs.primary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              expanded ? 'لږ وښایه' : 'ټول وښایه (${PashtoDigits.to(hidden)})',
+              style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: cs.primary),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

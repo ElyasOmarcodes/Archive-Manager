@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/date/pashto_calendar.dart';
+import '../../core/app_info.dart';
 import '../../core/license/license_gate.dart';
+import '../../core/update/update_checker.dart';
 import '../../core/theme/tokens.dart';
 import '../models/models.dart';
 import '../models/query.dart';
@@ -64,6 +66,20 @@ class AppState extends ChangeNotifier {
   static const bool _forceLocked = bool.fromEnvironment('FORCE_LOCKED');
 
   bool get locked => license.locked || _forceLocked;
+
+  /// د نوې نسخې کتونکی — د تنظیماتو «په اړه» کارت یې ښیي.
+  late final UpdateChecker updates =
+      UpdateChecker(currentVersion: kAppVersion)..addListener(notifyListeners);
+
+  AppLifecycleListener? _lifecycle;
+
+  @override
+  void dispose() {
+    _lifecycle?.dispose();
+    license.dispose();
+    updates.dispose();
+    super.dispose();
+  }
 
   Future<void> _saveLock(bool locked, DateTime? at) async {
     settings.licenseLocked = locked;
@@ -168,7 +184,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     // د کنټرول فایل څارنه — چوپه، په پس‌منظر کې.
-    if (!LicenseGate.isTestEnvironment) license.start();
+    if (!LicenseGate.isTestEnvironment) {
+      license.start();
+      updates.start();
+      // کله چې کاروونکی کړکۍ ته راستون شي، سمدلاسه پوښتو — نو
+      // امر تر ۱۰ ثانیو هم ژر ورسیږي.
+      _lifecycle = AppLifecycleListener(onResume: () => license.check());
+    }
 
     // ── سکن — یوازې که اړتیا وي ──
     //

@@ -25,6 +25,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <shellapi.h>
 #include <shlobj.h>
 
 #include <string>
@@ -65,6 +66,54 @@ static std::wstring InstallDir() {
 static bool FileExists(const std::wstring& p) {
   DWORD a = GetFileAttributesW(p.c_str());
   return a != INVALID_FILE_ATTRIBUTES && !(a & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+/// `%LOCALAPPDATA%\Arvitch` — د ټولو نسخو پلار فولډر.
+static std::wstring BaseDir() {
+  PWSTR base = nullptr;
+  if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &base))) {
+    return L"";
+  }
+  std::wstring dir(base);
+  CoTaskMemFree(base);
+  dir += L"\\Arvitch";
+  return dir;
+}
+
+/// یو فولډر له ټولو محتویاتو سره غورځوي (پرته له پوښتنې).
+static void DeleteTree(const std::wstring& dir) {
+  // `SHFileOperationW` دوه‌ځله-صفر پای ته اړتیا لري.
+  std::wstring from = dir;
+  from.push_back(L'\0');
+  SHFILEOPSTRUCTW op{};
+  op.wFunc = FO_DELETE;
+  op.pFrom = from.c_str();
+  op.fFlags = FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT;
+  SHFileOperationW(&op);
+}
+
+/// **زاړه نسخې پاکوي.**
+///
+/// هر ځل چې نوې نسخه ځان‌پرځای کوي، یو نوی `v<نسخه>` فولډر
+/// جوړیږي. پرته له دې، به هره اپډیټ ~۴۰MB پاتې شونې پرېښوده.
+/// نو د نوې نسخې تر بریالي ځای‌پرځای کولو **روسته**، نور یې
+/// غورځوو — ډیټا او تنظیمات دلته نه دي (هغه په `%APPDATA%` او د
+/// آرشیف پر ډرایو کې دي)، نو هیڅ نه ورکیږي.
+static void CleanupOldVersions(const std::wstring& keep) {
+  const std::wstring base = BaseDir();
+  if (base.empty()) return;
+
+  WIN32_FIND_DATAW fd{};
+  HANDLE h = FindFirstFileW((base + L"\\*").c_str(), &fd);
+  if (h == INVALID_HANDLE_VALUE) return;
+  do {
+    if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+    const std::wstring name = fd.cFileName;
+    if (name == L"." || name == L".." || name == keep) continue;
+    if (name.empty() || name[0] != L'v') continue;  // یوازې د نسخو فولډرونه
+    DeleteTree(base + L"\\" + name);
+  } while (FindNextFileW(h, &fd));
+  FindClose(h);
 }
 
 /// د ټولو منځنیو فولډرونو سره لار جوړوي.
@@ -169,6 +218,9 @@ int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
            L"دا پروګرام وینډوز ۱۰ (۱۸۰۳) یا نوې ته اړتیا لري.");
       return 1;
     }
+
+    // نوې نسخه چمتو ده — زاړه یې اوس غورځوو.
+    CleanupOldVersions(std::wstring(L"v") + W_APP_VERSION);
   }
 
   // ── اصلي پروګرام چلوو ──

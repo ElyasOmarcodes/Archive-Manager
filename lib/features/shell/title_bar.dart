@@ -341,11 +341,12 @@ class _ActionsState extends State<_Actions> {
           color: cs.outlineVariant,
         ),
 
+        // **سټایل یې د نورو په څېر دی.** کاروونکي وویل: «د نوې
+        // پیښې د ایکن سټایل ددې نورو سره یو شان وي باید».
         _BarButton(
           key: AppTitleBar.kNewEvent,
           icon: Icons.add_rounded,
           label: 'نوې پیښه',
-          accent: true,
           onTap: () {
             // **ولې د ناوبرۍ کیلي؟** دا بار د `Navigator` تر پورته
             // دی، نو د خپل `context` له لارې `showDialog()` هیڅ
@@ -400,7 +401,6 @@ class _BarButton extends StatefulWidget {
     required this.onTap,
     required this.onHint,
     this.busy = false,
-    this.accent = false,
   });
 
   final IconData icon;
@@ -408,10 +408,6 @@ class _BarButton extends StatefulWidget {
   final VoidCallback? onTap;
   final ValueChanged<String?> onHint;
   final bool busy;
-
-  /// د اصلي عمل تڼۍ (نوې پیښه) — د پروګرام په رنګ، نو سترګه یې
-  /// له نورو ایکنونو بېله کړي.
-  final bool accent;
 
   @override
   State<_BarButton> createState() => _BarButtonState();
@@ -477,23 +473,19 @@ class _BarButtonState extends State<_BarButton>
             height: 26,
             margin: const EdgeInsets.symmetric(horizontal: 1),
             decoration: BoxDecoration(
-              color: widget.accent
-                  ? cs.primary.withValues(alpha: _over ? 0.22 : 0.13)
-                  : _over
-                      ? cs.onSurface.withValues(alpha: 0.09)
-                      : Colors.transparent,
+              color: _over
+                  ? cs.onSurface.withValues(alpha: 0.09)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(7),
             ),
             child: RotationTransition(
               turns: _spin,
               child: Icon(
                 widget.icon,
-                size: widget.accent ? 18 : 16,
+                size: 16,
                 color: widget.onTap == null
                     ? cs.onSurfaceVariant.withValues(alpha: 0.55)
-                    : widget.accent
-                        ? cs.primary
-                        : cs.onSurfaceVariant,
+                    : cs.onSurfaceVariant,
               ),
             ),
           ),

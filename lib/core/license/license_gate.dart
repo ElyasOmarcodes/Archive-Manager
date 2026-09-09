@@ -33,15 +33,24 @@ class LicenseGate extends ChangeNotifier {
     required this.onChanged,
     http.Client? client,
     this.url = kControlUrl,
+    this.apiUrl = kControlApiUrl,
     this.every = const Duration(seconds: 10),
   }) : _client = client ?? http.Client();
 
-  /// هغه فایل چې د پروګرام برخلیک ټاکي.
+  /// هغه فایل چې د پروګرام برخلیک ټاکي (خام لینک).
   static const String kControlUrl =
       'https://raw.githubusercontent.com/ElyasOmarcodes/Ai-Model/'
       'Apps-Expire-Files/HK-Archive-App-Sys.TXT';
 
+  /// **هماغه فایل، خو د GitHub د API له لارې.**
+  ///
+  /// ولې دواړه؟ وګورئ `_read()`.
+  static const String kControlApiUrl =
+      'https://api.github.com/repos/ElyasOmarcodes/Ai-Model/contents/'
+      'HK-Archive-App-Sys.TXT?ref=Apps-Expire-Files';
+
   final String url;
+  final String apiUrl;
   final Duration every;
   final http.Client _client;
 
@@ -101,6 +110,12 @@ class LicenseGate extends ChangeNotifier {
     super.dispose();
   }
 
+  /// د API د ځواب نښه — نو راتلونکې پوښتنه شرطي (conditional) وي.
+  String? _etag;
+
+  /// وروستی پېژندل شوی متن — کله چې سرور «بدلون نشته» ووایي.
+  String? _lastBody;
+
   /// یو ځل ګوري. راګرځي: آیا پروګرام خلاص دی؟
   Future<bool> check() async {
     if (checking) return !_locked;
@@ -108,24 +123,12 @@ class LicenseGate extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final u = Uri.parse(
-          '$url?t=${DateTime.now().millisecondsSinceEpoch}');
-      final r = await _client.get(u, headers: const {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-      }).timeout(const Duration(seconds: 12));
-
+      final body = await _read();
       lastCheck = DateTime.now();
-
-      if (r.statusCode != 200) {
-        // سرور ځواب ورکړ خو نه یې موند — دا د شبکې ستونزه ګڼو، نه
-        // د تړلو امر. ګنې یوه ورکه پوښۍ به ټول پروګرامونه ودروي.
-        lastError = 'HTTP ${r.statusCode}';
-        return !_locked;
-      }
+      if (body == null) return !_locked; // شبکه/سرور — حالت نه بدلوو
 
       lastError = null;
-      final allowed = r.body.trim().toLowerCase() == 'true';
+      final allowed = body.trim().toLowerCase() == 'true';
       await _apply(locked: !allowed);
       return allowed;
     } catch (e) {
@@ -136,6 +139,65 @@ class LicenseGate extends ChangeNotifier {
       checking = false;
       notifyListeners();
     }
+  }
+
+  /// **د امر لوستل — دوه لارې، ترتیب سره.**
+  ///
+  /// کاروونکي وویل: «د بلاک کېدو … اجازه یې ناوخته ترلاسه کیږي.
+  /// نږدې ۵ دقیقو کې ایله پروګرام امر ترلاسه کړ. غواړم په څو
+  /// ثانیو کې لایف امر ترلاسه شي».
+  ///
+  /// **علت:** خام لینک (`raw.githubusercontent.com`) د
+  /// `cache-control: max-age=300` سره راځي — یعنې د CDN او د هرې
+  /// منځنۍ پروکسۍ لپاره **پنځه دقیقې** زوړ ځواب هم سم دی.
+  ///
+  /// **حل:** لومړی د GitHub **API** له لارې پوښتو:
+  ///
+  /// * هغه CDN نه دی — ځواب یې تل تازه وي
+  /// * شرطي پوښتنه کوو (`If-None-Match`): که بدلون نه وي، سرور
+  ///   `304` راګرځوي — **بایټ صفر، او د GitHub د حد په حساب کې
+  ///   هم نه شمېرل کیږي**، نو هرې ۱۰ ثانیې پوښتل خوندي دي
+  /// * که API ونه چلیږي (حد، بندښت، بله تېروتنه)، بیا خام لینک
+  ///   کاروو — خو د یوې بېلې پوښتنې (`?t=…`) او `no-cache` سره
+  ///
+  /// راګرځي: نوی متن، یا `null` که پوښتنه ناکامه شوه.
+  Future<String?> _read() async {
+    // ── ۱ · API (تازه، شرطي) ──
+    try {
+      final r = await _client.get(Uri.parse(apiUrl), headers: {
+        // «خام متن راکړه، نه JSON»
+        'Accept': 'application/vnd.github.raw',
+        'Cache-Control': 'no-cache',
+        // که مو مخکینۍ نښه ولري، شرطي پوښتنه کوو — نو بې‌بدلونه
+        // ځواب `304` وي: بایټ صفر، او د حد په حساب کې نه راځي.
+        'If-None-Match': ?_etag,
+      }).timeout(const Duration(seconds: 10));
+
+      if (r.statusCode == 304 && _lastBody != null) return _lastBody;
+      if (r.statusCode == 200) {
+        _etag = r.headers['etag'];
+        return _lastBody = r.body;
+      }
+      // ۴۰۳ = د حد پای، ۴۰۴ = ورک، ۵xx = سرور — لاندې لار وازمویو.
+      lastError = 'API HTTP ${r.statusCode}';
+    } catch (e) {
+      lastError = '$e';
+    }
+
+    // ── ۲ · خام لینک (د کیش مخنیوی) ──
+    try {
+      final u = Uri.parse('$url?t=${DateTime.now().millisecondsSinceEpoch}');
+      final r = await _client.get(u, headers: const {
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        'Pragma': 'no-cache',
+      }).timeout(const Duration(seconds: 12));
+
+      if (r.statusCode == 200) return _lastBody = r.body;
+      lastError = 'HTTP ${r.statusCode}';
+    } catch (e) {
+      lastError = '$e';
+    }
+    return null;
   }
 
   Future<void> _apply({required bool locked}) async {
